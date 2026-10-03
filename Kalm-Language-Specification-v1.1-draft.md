@@ -322,7 +322,7 @@ class FileStore impl Closeable {
 }
 ```
 
-`read` and `write` declare property accessors. Kalm member access rewrites to the accessor; Java receives conventional `getX`/`setX` methods. `lazy fixed` declares a read-only field evaluated once on first access and safely publishes the cached value. The initializer runs at most once, including when it throws; subsequent reads rethrow the same failure. `late var` is a non-null reference field assigned after construction; the compiler checks definite assignment, with a runtime guard for access from Java. `constant` declares a public static final Java compile-time constant restricted to primitive or `Text` literal values; the compiler emits a Java constant variable where Java permits it. Constants are implicitly `pub` and top-level in 1.x. `legacy` marks a declaration deprecated in Kalm diagnostics and emits Java `@Deprecated`.
+`read` and `write` declare property accessors. Kalm member access rewrites to the accessor; Java receives conventional `getX`/`setX` methods. `lazy fix` declares a read-only field evaluated once on first access and safely publishes the cached value. The initializer runs at most once, including when it throws; subsequent reads rethrow the same failure. `late var` is a non-null reference field assigned after construction; the compiler checks definite assignment, with a runtime guard for access from Java. `constant` declares a public static final Java compile-time constant restricted to primitive or `Text` literal values; the compiler emits a Java constant variable where Java permits it. Constants are implicitly `pub` and top-level in 1.x. `legacy` marks a declaration deprecated in Kalm diagnostics and emits Java `@Deprecated`.
 
 ```kalm
 use java.time.ZoneId;
@@ -511,7 +511,7 @@ Declaration       = { AnnotationUse } [ Visibility ] [ "legacy" ]
 AnnotationUse     = "@" QualifiedName [ "(" [ AnnotationArguments ] ")" ] ;
 AnnotationArguments = AnnotationArgument { "," AnnotationArgument } ;
 AnnotationArgument  = [ Identifier "=" ] AnnotationValue ;
-AnnotationValue     = ConstantExpr | QualifiedName "." "class" | "{" [ AnnotationValues ] "}" | NestedAnnotation ;
+AnnotationValue     = ConstantExpr | Type "." "class" | "{" [ AnnotationValues ] "}" | NestedAnnotation ;
 AnnotationValues    = AnnotationValue { "," AnnotationValue } ;
 NestedAnnotation    = "@" QualifiedName [ "(" [ AnnotationArguments ] ")" ] ;
 Visibility        = "pub" | "internal" | "private" | "protected" ;
@@ -522,14 +522,15 @@ InheritsClause    = "inherits" Type ;
 ImplClause        = "impl" TypeList ;
 ContractDecl      = "contract" Identifier [ TypeParams ] [ "inherits" TypeList ] ContractBlock ;
 DataDecl          = "data" Identifier [ TypeParams ] "(" [ Params ] ")" [ GenerateClause ] Terminator ;
-ChoiceDecl        = "choice" Identifier [ TypeParams ] "{" { ChoiceVariant } "}" ;
+ChoiceDecl        = "choice" Identifier [ TypeParams ] ChoiceBlock ;
+ChoiceBlock       = "{" { ChoiceVariant } "}" | ":" DeclarationSuite(ChoiceVariant) ;
 ChoiceVariant     = Identifier Terminator ;
 SingletonDecl     = "singleton" Identifier MemberBlock ;
-MemberBlock       = "{" { Member } "}" ;
+MemberBlock       = "{" { Member } "}" | ":" DeclarationSuite(Member) ;
 Member            = { AnnotationUse } [ Visibility ] [ "legacy" ]
                     ( Field | Constructor | FunctionDecl | NeedsFunction
                     | Accessor | ForwardDecl | TypeDecl ) ;
-ContractBlock     = "{" { ContractMember } "}" ;
+ContractBlock     = "{" { ContractMember } "}" | ":" DeclarationSuite(ContractMember) ;
 ContractMember    = { AnnotationUse } ( FunctionSignature | AccessorSignature ) ;
 FunctionHead      = [ "async" ] "fun" Identifier [ TypeParams ] "(" [ Params ] ")"
                     [ "->" Type ] [ GivenClause ] ;
@@ -552,41 +553,51 @@ GivenClause       = "given" TypeConstraint { "," TypeConstraint } ;
 TypeConstraint    = TypeParam ":" Type ;
 TypeList          = Type { "," Type } ;
 Params            = Param { "," Param } ;
-Param             = Identifier ":" Type ;
+Param             = { AnnotationUse } Identifier ":" Type ;
 TypeParams        = "<" TypeParam { "," TypeParam } ">" ;
-TypeParam         = Identifier ;
-Type              = NamedType [ "?" ] ;
+TypeParam         = { AnnotationUse } Identifier ;
+Type              = { AnnotationUse } NamedType [ "?" ] ;
 NamedType         = QualifiedName [ "<" Type { "," Type } ">" ]
                     | "Unit" | "Bool" | "Byte" | "Short" | "Int" | "Long"
                     | "Float" | "Double" | "Char" | "Text" | "Any" | "Task" "<" Type ">"
                     | "Array" "<" Type ">" | "BoolArray" | "ByteArray" | "ShortArray"
                     | "IntArray" | "LongArray" | "FloatArray" | "DoubleArray" | "CharArray"
                     | "List" "<" Type ">" | "Map" "<" Type "," Type ">" ;
-AugmentDecl       = [ "bridge" ] "augment" Type "{" { AugmentFunction } "}" ;
+AugmentDecl       = [ "bridge" ] "augment" Type AugmentBlock ;
+AugmentBlock      = "{" { AugmentFunction } "}" | ":" DeclarationSuite(AugmentFunction) ;
 AugmentFunction   = [ Visibility ] [ "legacy" ] FunctionDecl ;
 ExternalDecl      = "external" "fun" Identifier [ TypeParams ] "(" [ Params ] ")"
                     [ "->" Type ] [ GivenClause ] "=" QualifiedName Terminator ;
-AnnotationDecl    = "annotation" Identifier "{" { AnnotationMember } "}" ;
+AnnotationDecl    = "annotation" Identifier AnnotationBlock ;
+AnnotationBlock   = "{" { AnnotationMember } "}" | ":" DeclarationSuite(AnnotationMember) ;
 AnnotationMember  = TargetDecl | AnnotationElement ;
 TargetDecl        = "target" TargetKind { "," TargetKind } Terminator ;
-TargetKind        = "type" | "function" | "field" | "property" | "parameter" ;
+TargetKind        = "type" | "function" | "field" | "property" | "parameter"
+                    | "constructor" | "localVariable" | "annotationType" | "typeUse"
+                    | "typeParameter" | "recordComponent" ;
 AnnotationElement = Identifier ":" Type [ "=" AnnotationValue ] Terminator ;
 TestDecl          = "test" TextLiteral Block ;
 HookDecl          = ( "before" | "after" ) Block ;
 Block             = "{" { Statement } "}" | ":" Suite ;
 Suite             = SimpleSuite | NEWLINE INDENT Statement { Statement } DEDENT ;
-SimpleSuite       = SimpleStatement { ";" SimpleStatement } [ ";" ] ;
+SimpleSuite       = SimpleStatement { SimpleStatement } ;
+DeclarationSuite(Element) = Element { Element }
+                    | NEWLINE INDENT Element { Element } DEDENT ;
+SimpleStatement   = Binding | ReturnStmt | RaiseStmt | CheckStmt | StopStmt | NextStmt
+                    | Expr Terminator ;
+BlockEnd          = "}" | DEDENT ;
 Terminator        = ";" | NEWLINE | BlockEnd | EOF ;
 Statement         = Binding | IfStmt | WhileStmt | ForStmt | ChooseStmt | ReturnStmt | RaiseStmt
                     | TryStmt | WithStmt | DeferStmt | GuardStmt | CheckStmt | StopStmt | NextStmt
-                    | Expression Terminator ;
-Binding           = ( "fix" | "var" ) Identifier [ ":" Type ] "=" Expr Terminator ;
+                    | Block | Expr Terminator ;
+Binding           = { AnnotationUse } ( "fix" | "var" ) Identifier [ ":" Type ] "=" Expr Terminator ;
 IfStmt            = "if" Condition Block { "elif" Condition Block } [ "else" Block ] ;
 Condition         = Expr | "(" Expr ")" ;
 WhileStmt         = "while" Condition Block ;
 ForStmt           = "for" ( "(" Identifier "in" Expr ")" | Identifier "in" Expr ) Block ;
 ChooseStmt        = ChooseExpr Terminator ;
-ChooseExpr        = "choose" Expr "{" { WhenArm } "}" ;
+ChooseExpr        = "choose" Expr ChooseBlock ;
+ChooseBlock       = "{" { WhenArm } "}" | ":" DeclarationSuite(WhenArm) ;
 WhenArm           = "when" Pattern "=>" ( Expr Terminator | Block ) ;
 Pattern           = QualifiedName | "_" | Literal ;
 ReturnStmt        = "return" [ Expr ] Terminator ;
@@ -604,7 +615,7 @@ NextStmt          = "next" Terminator ;
 TaskExpr          = "task" Block ;
 Lambda            = "fun" LambdaParams "=>" Expr | "fun" LambdaParams Block ;
 LambdaParams      = LambdaParam { "," LambdaParam } | "(" [ LambdaParam { "," LambdaParam } ] ")" ;
-LambdaParam       = Identifier [ ":" Type ] ;
+LambdaParam       = { AnnotationUse } Identifier [ ":" Type ] ;
 Expr              = Assignment ;
 Assignment        = Coalesce [ AssignmentOp Assignment ] ;
 Coalesce          = LogicalOr [ "??" Coalesce ] ;
@@ -634,7 +645,7 @@ TypeArgs          = "<" Type { "," Type } ">" ;
 QualifiedName     = Identifier { "." Identifier } ;
 ```
 
-Calls on a name resolving to a type construct it; other calls invoke a function or method. Generic type arguments before constructor parentheses support Java calls such as `ArrayList<Text>()`. `choose` patterns match enum constants, closed-hierarchy types, literals, or `_`; component destructuring is not supported in 1.x. Braced blocks are valid only in declarations, control flow, resource/task/guard blocks, tests, and lambdas. `fix` has context-dependent but related meanings: immutable binding, non-extendable class, or non-overridable member. A value introduced by `fix` cannot be reassigned. `fun` introduces both named functions and lambdas: declarations have a name and parenthesized parameters, while lambdas use `=>` or a braced body. Expression parsing follows the precedence table in §4.
+Calls on a name resolving to a type construct it; other calls invoke a function or method. Generic type arguments before constructor parentheses support Java calls such as `ArrayList<Text>()`. `choose` patterns match enum constants, closed-hierarchy types, literals, or `_`; component destructuring is not supported in 1.x. Braced blocks are valid only in declarations, control flow, resource/task/guard blocks, tests, and lambdas. `fix` has context-dependent but related meanings: immutable binding, non-extendable class, or non-overridable member. A value introduced by `fix` cannot be reassigned. `fun` introduces both named functions and lambdas: declarations have a name and parenthesized parameters, while lambdas use `=>` or a brace/colon body. Colon lambdas require parenthesized parameters. Expression parsing follows the precedence table in §4.
 
 ## 13. Diagnostics, conformance, and delivery gates
 
@@ -655,12 +666,12 @@ A release candidate is conforming only if:
 
 All deliverables use Java and share the compiler core. Build a JDK 25 multi-module repository.
 
-1. **Language core:** lexer for semicolon-terminated statements and brace-delimited blocks, parser, AST, symbol table, type checker, stable diagnostics, and `kalm check`. Shared editor conformance includes scoped completion, dependency packages, annotation argument keys, and incomplete-program recovery.
+1. **Language core:** lexer and layout parsing for optional semicolons and mixed brace/colon blocks, parser, AST, symbol table, type checker, stable diagnostics, and `kalm check`. Shared editor conformance includes scoped completion, dependency packages, annotation argument keys, and incomplete-program recovery.
 2. **JVM slice:** Java source generator, source maps, Java Compiler API invocation, runtime jar, and `compile/run`; verify with JDK 25.
 3. **Interop:** Java signature stubs and joint compilation tests in both call directions.
 4. **Build integrations:** Maven/Gradle plugins, test roots, dependency/classpath wiring, incremental inputs and outputs.
 5. **Editor:** LSP first, then VS Code and IntelliJ packages using shared conformance fixtures.
-6. **1.0 gate:** publish all artifacts, document install/build/run, ship a mixed-language sample, and pass §13.
+6. **1.1 gate:** publish all artifacts, document install/build/run, ship a mixed-language sample, and pass §13.
 
 Each milestone produces a runnable artifact and CI fixtures. Before 1.0, breaking changes require migration notes; after 1.0, source and public interop compatibility follow semantic versioning.
 
