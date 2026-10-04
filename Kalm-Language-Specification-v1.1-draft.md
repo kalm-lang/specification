@@ -209,7 +209,7 @@ try {
 
 ### Matching and checks
 
-`choice` declares a finite set of named variants and compiles to a Java enum; variants carry no payload in 1.x. `choose` evaluates a value once and selects a `when` branch. It must be exhaustive for a `choice` and for a `closed` hierarchy; `_` is the explicit catch-all branch.
+`choice` declares a finite set of named variants and compiles to a Java enum; variants carry no payload or type parameters in 1.x. `choose` evaluates a value once and selects a `when` branch. It must be exhaustive for a `choice` and for a `closed` hierarchy; `_` is the explicit catch-all branch.
 
 ```kalm
 choice Status {
@@ -295,7 +295,7 @@ A `closed class` must declare every allowed direct child as a nested declaration
 
 Kalm classes and methods are closed to inheritance or overriding by default. `fix` maps to Java `final`; `extendable` leaves a class or method open; `base` maps to `abstract`; and `closed` maps to Java `sealed`. `base closed` is allowed. `fix` cannot be combined with `base`, `closed`, or `extendable`; `closed` cannot be combined with `extendable`. An override may be marked `fix` to close that method again. `override fun` must match the inherited signature after generic substitution.
 
-`data` declares an immutable Java record with components, accessors, and Java record value equality. `choice` declares a finite set of named variants and compiles to a Java enum; variants carry no payload in 1.x. `singleton` declares one globally accessible instance, generated as a final Java class with a private constructor and `INSTANCE` field. `alias Name = Type` creates a compile-time type alias and no new JVM type. `given` adds bounds to type parameters, for example `fun sort<T>(items: List<T>) -> List<T> given T: Comparable<T>`. In 1.x the clause is required only when a type parameter has a bound.
+`data` declares an immutable Java record with components, accessors, and Java record value equality. `choice` declares a finite set of named variants and compiles to a Java enum; variants carry no payload or type parameters in 1.x. `singleton` declares one globally accessible instance, generated as a final Java class with a private constructor and `INSTANCE` field. `alias Name = Type` creates a compile-time type alias and no new JVM type. `given` adds bounds to type parameters, for example `fun sort<T>(items: List<T>) -> List<T> given T: Comparable<T>`. In 1.x the clause is required only when a type parameter has a bound.
 
 `generate Display` overrides a data record’s generated `toString()` with a stable `TypeName[field=value, ...]` form, using component declaration order and Kalm text formatting for each value. Java record equality and hashing remain those provided by the record model; they are not separately generated. `augment Type { ... }` declares Kalm-only extension functions. Inside an augment function, `self` is the receiver value; calls are rewritten to generated static helpers whose first parameter is that receiver, and do not add methods to the Java class. `bridge augment` also emits a public Java helper facade for those functions. `forward Contract to field` generates contract methods that delegate to that field; the field must implement the contract. Generated forwarding methods preserve the Java contract’s checked-exception declarations.
 
@@ -322,7 +322,7 @@ class FileStore impl Closeable {
 }
 ```
 
-`read` and `write` declare property accessors. Kalm member access rewrites to the accessor; Java receives conventional `getX`/`setX` methods. `lazy fix` declares a read-only field evaluated once on first access and safely publishes the cached value. The initializer runs at most once, including when it throws; subsequent reads rethrow the same failure. `late var` is a non-null reference field assigned after construction; the compiler checks definite assignment, with a runtime guard for access from Java. `constant` declares a public static final Java compile-time constant restricted to primitive or `Text` literal values; the compiler emits a Java constant variable where Java permits it. Constants are implicitly `pub` and top-level in 1.x. `legacy` marks a declaration deprecated in Kalm diagnostics and emits Java `@Deprecated`.
+`read` and `write` declare property accessors. Kalm member access rewrites to the accessor; Java receives conventional `getX`/`setX` methods. `lazy fix` declares a read-only field evaluated once on first access and safely publishes the cached value. The initializer runs at most once, including when it throws; subsequent reads rethrow the same failure. `late var` is a non-null reference field assigned after construction; reads from both Kalm and Java use a runtime guard that throws `IllegalStateException` until assignment. Setters reject null, and subsequent assignments are allowed. No compile-time initialization protocol is promised for `late` fields. `constant` declares a public static final Java compile-time constant restricted to primitive or `Text` literal values; the compiler emits a Java constant variable where Java permits it. Constants are implicitly `pub` and top-level in 1.x. `legacy` marks a declaration deprecated in Kalm diagnostics and emits Java `@Deprecated`.
 
 ```kalm
 use java.time.ZoneId;
@@ -495,7 +495,7 @@ Editor support is part of the release contract. One Kalm Language Server Protoco
 - **VS Code:** extension recognizes `.kalm` and language ID `kalm`; starts or downloads a compatible language server; integrates Maven/Gradle classpaths; provides highlighting, snippets, diagnostics, completion, hover, navigation, rename, and formatting; supports compiler path/version settings.
 - **IntelliJ IDEA:** plugin recognizes `.kalm`; provides highlighting, diagnostics, completion, navigation, rename, and formatting; imports Kalm roots/dependencies in Maven/Gradle projects; may embed the shared language server; does not require Ultimate-only features.
 
-Editor packages share fixtures for parsing, highlighting, diagnostics, and formatting. Formatting preserves each block’s brace/colon style and existing semicolons, and is deterministic and idempotent; 1.x exposes indentation width (for visual indentation inside braces) and line length settings.
+Editor packages share fixtures for parsing, highlighting, diagnostics, and formatting. Formatting normalizes related sibling blocks to the first block’s brace/colon style, while nested groups choose independently and empty blocks remain `{}`. It preserves explicit semicolons, is deterministic and idempotent, and checks without writing unless `--fix` is supplied; 1.x exposes indentation width (for visual indentation inside braces) and line length settings.
 
 ## 12. Core grammar
 
@@ -522,7 +522,7 @@ InheritsClause    = "inherits" Type ;
 ImplClause        = "impl" TypeList ;
 ContractDecl      = "contract" Identifier [ TypeParams ] [ "inherits" TypeList ] ContractBlock ;
 DataDecl          = "data" Identifier [ TypeParams ] "(" [ Params ] ")" [ GenerateClause ] Terminator ;
-ChoiceDecl        = "choice" Identifier [ TypeParams ] ChoiceBlock ;
+ChoiceDecl        = "choice" Identifier ChoiceBlock ;
 ChoiceBlock       = "{" { ChoiceVariant } "}" | ":" DeclarationSuite(ChoiceVariant) ;
 ChoiceVariant     = Identifier Terminator ;
 SingletonDecl     = "singleton" Identifier MemberBlock ;
