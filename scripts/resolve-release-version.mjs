@@ -24,8 +24,8 @@ if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
 const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
 const majorMinor = versionMatch ? `${versionMatch[1]}.${versionMatch[2]}` : '';
 
-if (!map.specifications.some((entry) => entry.majorMinor === majorMinor)) {
-  throw new Error(`No specification document is mapped to release series ${majorMinor || version}`);
+if (!map.specifications.some((entry) => entry.majorMinor === majorMinor && entry.status === 'final')) {
+  throw new Error(`No final specification document is mapped to release series ${majorMinor || version}`);
 }
 
 if (eventName === 'push' && tagName !== `v${version}`) {

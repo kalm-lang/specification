@@ -29,6 +29,14 @@
       "require": "./index.cjs"
     },
     "./map": "./specification-map.json",
+    "./versions/*": {
+      "types": "./versions/*.d.mts",
+      "import": "./versions/*.mjs"
+    },
+    "./drafts/*": {
+      "types": "./drafts/*.d.mts",
+      "import": "./drafts/*.mjs"
+    },
     "./specifications/*": "./specifications/*"
   },
   "files": [
@@ -37,6 +45,8 @@
     "index.d.ts",
     "specification-map.json",
     "specifications/",
+    "versions/",
+    "drafts/",
     "README.md",
     "LICENSE"
   ],
