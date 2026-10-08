@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "latestSpecification": "1.1",
+  "specifications": [
+    {
+      "majorMinor": "0.1",
+      "specificationVersion": "0.1-draft",
+      "status": "draft",
+      "file": "specifications/v0.1-draft.md"
+    },
+    {
+      "majorMinor": "1.0",
+      "specificationVersion": "1.0-draft",
+      "status": "draft",
+      "file": "specifications/v1.0-draft.md"
+    },
+    {
+      "majorMinor": "1.1",
+      "specificationVersion": "1.1-draft",
+      "status": "draft",
+      "file": "specifications/v1.1-draft.md"
+    },
+    {
+      "majorMinor": "1.1",
+      "specificationVersion": "1.1",
+      "status": "final",
+      "file": "specifications/v1.1.md"
+    }
+  ]
+}

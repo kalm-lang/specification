@@ -1,0 +1,49 @@
+{
+  "name": "@kalm-lang/specifications",
+  "version": "0.0.0-development",
+  "description": "Versioned Kalm language specifications and lookup API",
+  "license": "MIT",
+  "homepage": "https://github.com/kalm-lang/specifications#readme",
+  "bugs": {
+    "url": "https://github.com/kalm-lang/specifications/issues"
+  },
+  "keywords": [
+    "kalm",
+    "language-specification",
+    "programming-language",
+    "syntax",
+    "grammar"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kalm-lang/specifications.git"
+  },
+  "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    },
+    "./map": "./specification-map.json",
+    "./specifications/*": "./specifications/*"
+  },
+  "files": [
+    "index.cjs",
+    "index.mjs",
+    "index.d.ts",
+    "specification-map.json",
+    "specifications/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=20.18.0"
+  }
+}

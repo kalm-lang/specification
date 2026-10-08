@@ -1,0 +1,148 @@
+name: Release specifications
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional mapped SemVer version (for example 1.1.0). Empty uses GitVersion.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: specifications-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish specification packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate a version with GitVersion
+        id: gitversion
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
+        uses: GitTools/actions/gitversion/execute@v4.7.0
+
+      - name: Resolve and validate release version
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          TAG_NAME: ${{ github.ref_name }}
+          GITVERSION_SEMVER: ${{ steps.gitversion.outputs.semVer }}
+        run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js and GitHub Packages authentication
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@kalm-lang'
+
+      - name: Reject an existing release or tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "A GitHub release already exists for $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists" >&2
+            exit 1
+          fi
+
+      - name: Reject existing package versions
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for package_version in "$RELEASE_VERSION" "${RELEASE_VERSION}-full"; do
+            package="@kalm-lang/specifications@$package_version"
+            if output=$(npm view "$package" version --registry=https://npm.pkg.github.com 2>&1); then
+              echo "Package version $package already exists" >&2
+              exit 1
+            elif [[ "$output" == *E404* || "$output" == *"404 Not Found"* ]]; then
+              continue
+            else
+              printf '%s\n' "$output" >&2
+              exit 1
+            fi
+          done
+
+      - name: Prepare focused and historical packages
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: node scripts/build-packages.mjs
+
+      - name: Publish focused specification package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: npm publish ".release-packages/versioned" --registry=https://npm.pkg.github.com
+
+      - name: Publish historical specification package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: npm publish ".release-packages/full" --registry=https://npm.pkg.github.com
+
+      - name: Create tag for a manually started release
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          git push origin "$RELEASE_TAG"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          mapfile -t SPEC_FILES < <(find .release-packages/versioned/specifications -maxdepth 1 -type f -name '*.md' -print)
+          if [ "${#SPEC_FILES[@]}" -ne 1 ]; then
+            echo "Expected exactly one version-matched specification Markdown file; found ${#SPEC_FILES[@]}" >&2
+            exit 1
+          fi
+
+          SPEC_FILE="${SPEC_FILES[0]}"
+          SPECIFICATION_VERSION=$(node -e "const map = require('./.release-packages/versioned/specification-map.json'); console.log(map.specifications[0].specificationVersion)")
+          NOTES=$(cat <<'EOF'
+          ## Kalm language specification SPECIFICATION_VERSION
+
+          This release includes the version-matched Markdown specification as its only release asset.
+
+          ## Published packages
+
+          - Focused: `@kalm-lang/specifications@RELEASE_VERSION`
+          - Historical bundle: `@kalm-lang/specifications@RELEASE_VERSION-full`
+          EOF
+          )
+          NOTES="${NOTES//SPECIFICATION_VERSION/$SPECIFICATION_VERSION}"
+          NOTES="${NOTES//RELEASE_VERSION/$RELEASE_VERSION}"
+
+          gh release create "$RELEASE_TAG" \
+            "$SPEC_FILE#Kalm Language Specification ${SPECIFICATION_VERSION} (Markdown)" \
+            --verify-tag \
+            --title "Kalm Language Specification ${RELEASE_VERSION}" \
+            --notes "$NOTES" \
+            --generate-notes
