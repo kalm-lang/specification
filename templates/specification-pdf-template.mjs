@@ -1,23 +1,28 @@
 import { createRequire } from 'node:module';
+import { access, readFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
-const { rgb, StandardFonts } = require('pdf-lib');
+const { rgb } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
 
 const palette = {
   light: {
-    paper: '#F3E8D5', surface: '#F1EBDD', soft: '#EEE7DA', ink: '#30271F',
+    paper: '#F3E8D5', surface: '#FCF5E8', soft: '#E9DCC4', ink: '#30271F',
+    codeInk: '#241B14',
     muted: '#70604F', line: '#CBBB9F', accent: '#A33E25', accentInk: '#FFF8EC',
     cover: '#F3E8D5', coverSurface: '#E9DCC4', coverInk: '#30271F', watermark: '#D7C6A9',
     tableHead: '#30271F', tableHeadInk: '#FFF8EC',
   },
   dark: {
     paper: '#191C19', surface: '#232720', soft: '#2D3329', ink: '#ECE5D7',
+    codeInk: '#F2EADC',
     muted: '#B7B5A3', line: '#505748', accent: '#F4A381', accentInk: '#241B14',
     cover: '#191C19', coverSurface: '#232720', coverInk: '#ECE5D7', watermark: '#393C35',
     tableHead: '#2D3329', tableHeadInk: '#ECE5D7',
   },
   print: {
-    paper: '#FFFFFF', surface: '#FFFFFF', soft: '#F3F3F1', ink: '#25231F',
+    paper: '#FFFFFF', surface: '#F3F3F1', soft: '#EAE8E2', ink: '#25231F',
+    codeInk: '#25231F',
     muted: '#5F5A52', line: '#D0CDC7', accent: '#A33E25', accentInk: '#FFFFFF',
     cover: '#FFFFFF', coverSurface: '#F7F5F1', coverInk: '#25231F', watermark: '#E4E1DC',
     tableHead: '#25231F', tableHeadInk: '#FFFFFF',
@@ -47,17 +52,71 @@ export function color(hex) {
   );
 }
 
+const fontCandidates = {
+  body: [
+    'C:/Windows/Fonts/segoeui.ttf',
+    '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+  ],
+  bold: [
+    'C:/Windows/Fonts/segoeuib.ttf',
+    '/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  ],
+  italic: [
+    'C:/Windows/Fonts/segoeuii.ttf',
+    '/usr/share/fonts/truetype/ubuntu/Ubuntu-RI.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSans-Italic.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf',
+  ],
+  boldItalic: [
+    'C:/Windows/Fonts/segoeuiz.ttf',
+    '/usr/share/fonts/truetype/ubuntu/Ubuntu-BI.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSans-BoldItalic.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf',
+  ],
+  serif: [
+    'C:/Windows/Fonts/pala.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',
+  ],
+  serifBold: [
+    'C:/Windows/Fonts/palab.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf',
+  ],
+  code: [
+    'C:/Windows/Fonts/consola.ttf',
+    '/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
+  ],
+};
+
+async function findFont(name) {
+  for (const candidate of fontCandidates[name]) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {}
+  }
+  throw new Error(`Cannot find a font for ${name}; expected a website-compatible system font`);
+}
+
 export async function embeddedFonts(document) {
-  const [body, bold, italic, boldItalic, serif, serifBold, code] = await Promise.all([
-    document.embedFont(StandardFonts.Helvetica),
-    document.embedFont(StandardFonts.HelveticaBold),
-    document.embedFont(StandardFonts.HelveticaOblique),
-    document.embedFont(StandardFonts.HelveticaBoldOblique),
-    document.embedFont(StandardFonts.TimesRoman),
-    document.embedFont(StandardFonts.TimesRomanBold),
-    document.embedFont(StandardFonts.Courier),
-  ]);
-  return { body, bold, italic, boldItalic, serif, serifBold, code };
+  document.registerFontkit(fontkit);
+  const fontBytes = await Promise.all(Object.keys(fontCandidates).map(async (name) => [
+    name,
+    await readFile(await findFont(name)),
+  ]));
+  const embedded = await Promise.all(fontBytes.map(async ([name, bytes]) => [
+    name,
+    await document.embedFont(bytes, { subset: true }),
+  ]));
+  const fonts = Object.fromEntries(embedded);
+  fonts.serifBold ??= fonts.serif;
+  return fonts;
 }
 
 export function drawCover(document, metadata, theme, fonts) {
@@ -74,7 +133,7 @@ export function drawCover(document, metadata, theme, fonts) {
   const markX = PAGE_WIDTH - 74 * MM;
   const markY = 22 * MM;
   const weight = markSize * 0.09;
-  const ringLeft = ornamentX - 43 * MM;
+  const ringLeft = ornamentX - 34 * MM;
   const stemCenter = ringLeft + weight / 2;
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;

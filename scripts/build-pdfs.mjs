@@ -230,7 +230,7 @@ function drawCode(flow, token) {
     page.drawRectangle({ x: LEFT, y: top - height, width: 3, height, color: flow.theme.accent });
     if (language) page.drawText(language, { x: innerX, y: top - 12, size: 6.2, font: flow.fonts.bold, color: flow.theme.accent });
     chunk.forEach((line, row) => page.drawText(line, {
-      x: innerX, y: top - labelHeight - 7 - row * leading, size, font: flow.fonts.code, color: flow.theme.ink,
+      x: innerX, y: top - labelHeight - 7 - row * leading, size: size + 0.4, font: flow.fonts.code, color: flow.theme.codeInk,
     }));
     flow.setY(top - height - 8);
     index += chunk.length;
