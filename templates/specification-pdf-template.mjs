@@ -75,7 +75,7 @@ export function drawCover(document, metadata, theme, fonts) {
   const markY = 22 * MM;
   const weight = markSize * 0.09;
   const ringLeft = ornamentX - 43 * MM;
-  const stemCenter = ringLeft - weight / 2;
+  const stemCenter = ringLeft + weight / 2;
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;
   page.drawLine({ start: { x: stemCenter, y: stemBottom }, end: { x: stemCenter, y: stemTop }, thickness: weight, color: theme.watermark });
@@ -115,14 +115,13 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
   page.drawText('Kalm Language Specification', {
     x: markX + 21, y: PAGE_HEIGHT - 30, size: 8.2, font: fonts.bold, color: theme.ink,
   });
-  const edition = `VERSION ${metadata.version}  /  ${metadata.status.toUpperCase()}`;
+  const edition = `${metadata.version}  /  ${metadata.status.toUpperCase()}`;
   const editionWidth = fonts.bold.widthOfTextAtSize(edition, 7.5);
   page.drawText(edition, {
     x: RIGHT - editionWidth, y: PAGE_HEIGHT - 30, size: 7.5, font: fonts.bold, color: theme.accent,
   });
 
-  const publication = `DATE ${metadata.date}  /  JAVA ${metadata.javaversion}`;
-  page.drawText(publication, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.muted });
+  page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.muted });
   const badgeWidth = 30;
   page.drawRectangle({ x: RIGHT - badgeWidth, y: 14, width: badgeWidth, height: 17, color: theme.accent });
   const pageLabel = String(pageNumber).padStart(2, '0');

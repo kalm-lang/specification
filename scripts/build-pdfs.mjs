@@ -134,6 +134,7 @@ function createFlow(document, metadata, theme, fonts) {
   let pageNumber = 0;
   function newPage() {
     page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.paper });
     pageNumber += 1;
     drawPageChrome(page, metadata, theme, fonts, pageNumber);
     y = TOP - 17;
