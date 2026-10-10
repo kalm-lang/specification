@@ -29,6 +29,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install GitVersion
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
+        uses: GitTools/actions/gitversion/setup@v4.7.0
+        with:
+          versionSpec: '6.8.x'
+
       - name: Calculate a version with GitVersion
         id: gitversion
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
