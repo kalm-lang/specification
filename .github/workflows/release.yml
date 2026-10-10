@@ -1,4 +1,4 @@
-name: Release specifications
+name: Release specification
 
 on:
   push:
@@ -16,7 +16,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: specifications-release-${{ github.ref }}
+  group: specification-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -73,7 +73,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for package_version in "$RELEASE_VERSION" "${RELEASE_VERSION}-full"; do
-            package="@kalm-lang/specifications@$package_version"
+            package="@kalm-lang/specification@$package_version"
             if output=$(npm view "$package" version --registry=https://npm.pkg.github.com 2>&1); then
               echo "Package version $package already exists" >&2
               exit 1
@@ -118,14 +118,14 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          mapfile -t SPEC_FILES < <(find .release-packages/versioned/specifications -maxdepth 1 -type f -name '*.md' -print)
+          mapfile -t SPEC_FILES < <(find .release-packages/versioned/documents -maxdepth 1 -type f -name '*.md' -print)
           if [ "${#SPEC_FILES[@]}" -ne 1 ]; then
             echo "Expected exactly one version-matched specification Markdown file; found ${#SPEC_FILES[@]}" >&2
             exit 1
           fi
 
           SPEC_FILE="${SPEC_FILES[0]}"
-          SPECIFICATION_VERSION=$(node -e "const map = require('./.release-packages/versioned/specification-map.json'); console.log(map.specifications[0].specificationVersion)")
+          SPECIFICATION_VERSION=$(node -e "const map = require('./.release-packages/versioned/map.json'); console.log(map.documents[0].specificationVersion)")
           NOTES=$(cat <<'EOF'
           ## Kalm language specification SPECIFICATION_VERSION
 
@@ -133,8 +133,8 @@ jobs:
 
           ## Published packages
 
-          - Focused: `@kalm-lang/specifications@RELEASE_VERSION`
-          - Historical bundle: `@kalm-lang/specifications@RELEASE_VERSION-full`
+          - Focused: `@kalm-lang/specification@RELEASE_VERSION`
+          - Historical bundle: `@kalm-lang/specification@RELEASE_VERSION-full`
           EOF
           )
           NOTES="${NOTES//SPECIFICATION_VERSION/$SPECIFICATION_VERSION}"

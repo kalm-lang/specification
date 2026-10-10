@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const map = JSON.parse(await readFile(path.join(root, 'specification-map.json'), 'utf8'));
+const map = JSON.parse(await readFile(path.join(root, 'map.json'), 'utf8'));
 const explicit = process.env.INPUT_VERSION?.trim();
 const eventName = process.env.EVENT_NAME;
 const tagName = process.env.TAG_NAME ?? '';
@@ -24,7 +24,7 @@ if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
 const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
 const majorMinor = versionMatch ? `${versionMatch[1]}.${versionMatch[2]}` : '';
 
-if (!map.specifications.some((entry) => entry.majorMinor === majorMinor && entry.status === 'final')) {
+if (!map.documents.some((entry) => entry.majorMinor === majorMinor && entry.status === 'final')) {
   throw new Error(`No final specification document is mapped to release series ${majorMinor || version}`);
 }
 

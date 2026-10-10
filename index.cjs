@@ -2,9 +2,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const map = require('./specification-map.json');
+const map = require('./map.json');
 
-const specifications = map.specifications;
+const specifications = map.documents;
 
 function listSpecifications({ includeDrafts = false } = {}) {
   if (typeof includeDrafts !== 'boolean') {
@@ -42,7 +42,7 @@ function getSpecification(version, { status = 'final' } = {}) {
 }
 
 module.exports = {
-  latestVersion: map.latest ?? map.latestSpecification,
+  latestVersion: map.latestSeries,
   listSpecifications,
   getSpecification,
 };
