@@ -138,7 +138,7 @@ export function drawCover(document, metadata, theme, fonts) {
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;
   page.drawLine({ start: { x: stemCenter, y: stemBottom }, end: { x: stemCenter, y: stemTop }, thickness: weight, color: theme.watermark });
-  const joinX = stemCenter + weight * 0.3;
+  const joinX = ringLeft;
   page.drawLine({ start: { x: markX + markSize * 0.70, y: markY + markSize * 0.76 }, end: { x: joinX, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
   page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: markX + markSize * 0.70, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
 
@@ -173,7 +173,7 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
   page.drawLine({ start: { x: markX + 11.1, y: markY + 11.2 }, end: { x: markX + 5.1, y: markY + 7.5 }, thickness: 1.8, color: theme.accentInk });
   page.drawLine({ start: { x: markX + 5.1, y: markY + 7.5 }, end: { x: markX + 11.1, y: markY + 3.8 }, thickness: 1.8, color: theme.accentInk });
   page.drawText('Kalm Language Specification', {
-    x: markX + 21, y: PAGE_HEIGHT - 30, size: 8.2, font: fonts.bold, color: theme.ink,
+    x: markX + 21, y: PAGE_HEIGHT - 30, size: 8.2, font: fonts.bold, color: theme.accent,
   });
   const edition = `${metadata.version}  /  ${metadata.status.toUpperCase()}`;
   const editionWidth = fonts.bold.widthOfTextAtSize(edition, 7.5);
@@ -181,7 +181,7 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
     x: RIGHT - editionWidth, y: PAGE_HEIGHT - 30, size: 7.5, font: fonts.bold, color: theme.accent,
   });
 
-  page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.muted });
+  page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.accent });
   const pageLabel = String(pageNumber).padStart(2, '0');
   const labelWidth = fonts.bold.widthOfTextAtSize(pageLabel, 7.1);
   page.drawText(pageLabel, {
