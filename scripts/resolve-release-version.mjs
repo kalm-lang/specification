@@ -14,7 +14,11 @@ if (explicit) {
 } else if (eventName === 'push') {
   version = tagName.replace(/^v/, '');
 } else {
-  version = process.env.GITVERSION_SEMVER ?? '';
+  version = process.env.GITVERSION_VERSION ?? '';
+  const calculatedSeries = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
+  if (calculatedSeries && `${calculatedSeries[1]}.${calculatedSeries[2]}` !== map.latestSeries) {
+    version = `${map.latestSeries}.0`;
+  }
 }
 
 if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {

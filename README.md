@@ -86,8 +86,10 @@ The schema is also published as `@kalm-lang/specification/schema`.
 
 Push a `vX.Y.Z` tag to release that mapped version, or start **Release
 specification** with `workflow_dispatch` and enter an optional `X.Y.Z`. An
-empty manual version uses GitVersion. The workflow rejects malformed or
-unmapped versions and stops when the GitHub release or tag already exists.
+empty manual version uses GitVersion's next patch when it matches the latest
+mapped final series; otherwise it starts at patch zero for that series. The
+workflow rejects malformed or unmapped versions and stops when the GitHub
+release or tag already exists.
 It publishes both package variants and creates a GitHub release with generated
 notes.
 
