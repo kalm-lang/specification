@@ -38,18 +38,6 @@ export const RIGHT = PAGE_WIDTH - 20 * MM;
 export const BOTTOM = 20 * MM;
 export const TOP = PAGE_HEIGHT - 23 * MM;
 
-export function drawPageFrame(page, theme) {
-  const inset = 3 * MM;
-  page.drawRectangle({
-    x: inset,
-    y: inset,
-    width: PAGE_WIDTH - 2 * inset,
-    height: PAGE_HEIGHT - 2 * inset,
-    borderColor: theme.line,
-    borderWidth: 0.45,
-  });
-}
-
 export function colors(name) {
   const theme = palette[name];
   return Object.fromEntries(Object.entries(theme).map(([key, value]) => [key, color(value)]));
@@ -134,13 +122,6 @@ export async function embeddedFonts(document) {
 export function drawCover(document, metadata, theme, fonts) {
   const page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.cover });
-  drawPageFrame(page, theme);
-
-  const detailX = PAGE_WIDTH - 27 * MM;
-  const detailY = PAGE_HEIGHT - 25 * MM;
-  page.drawCircle({ x: detailX, y: detailY, size: 18 * MM, color: theme.coverSurface });
-  page.drawCircle({ x: detailX, y: detailY, size: 13 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
-  page.drawCircle({ x: detailX, y: detailY, size: 8 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
 
   const ornamentX = PAGE_WIDTH - 20 * MM;
   const ornamentY = 50 * MM;
@@ -162,30 +143,29 @@ export function drawCover(document, metadata, theme, fonts) {
   page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: armRight, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
 
   const left = LEFT;
-  page.drawRectangle({ x: left, y: PAGE_HEIGHT - 75 * MM, width: 38 * MM, height: 3.5, color: theme.accent });
-  let y = PAGE_HEIGHT - 105 * MM;
+  let y = PAGE_HEIGHT - 85 * MM;
   const titleLines = metadata.title.replace(' Language ', ' Language\n').split('\n');
   for (const line of titleLines) {
     page.drawText(normalizeText(line), { x: left, y, size: 34, font: fonts.serifBold, color: theme.coverInk });
     y -= 43;
   }
   y -= 12;
-  const panelHeight = 76;
+  const panelHeight = 94;
   const panelY = y - panelHeight + 4;
-  page.drawRectangle({ x: left, y: panelY, width: 112 * MM, height: panelHeight, color: theme.coverSurface, borderColor: theme.watermark, borderWidth: 0.65 });
+  page.drawRectangle({ x: left, y: panelY, width: 80 * MM, height: panelHeight, color: theme.coverSurface, borderColor: theme.watermark, borderWidth: 0.65 });
   page.drawRectangle({ x: left, y: panelY, width: 3, height: panelHeight, color: theme.accent });
-  y -= 5;
+  y = panelY + panelHeight - 20;
   for (const [label, value] of [
     ['VERSION', metadata.version],
     ['STATUS', metadata.status.toUpperCase()],
     ['DATE', metadata.date],
     ['JAVA VERSION', metadata.javaversion],
   ]) {
-    page.drawText(label, { x: left + 12, y, size: 8.4, font: fonts.bold, color: theme.accent });
-    page.drawText(normalizeText(value), { x: left + 82, y, size: 8.4, font: fonts.bold, color: theme.coverInk });
+    page.drawText(label, { x: left + 15, y, size: 8.4, font: fonts.bold, color: theme.accent });
+    const labelWidth = fonts.bold.widthOfTextAtSize(label, 8.4);
+    page.drawText(normalizeText(value), { x: left + 15 + labelWidth + 9, y, size: 8.4, font: fonts.bold, color: theme.coverInk });
     y -= 16;
   }
-  page.drawRectangle({ x: left, y: y - 13, width: 122, height: 2.3, color: theme.accent });
   return page;
 }
 

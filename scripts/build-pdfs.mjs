@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import frontMatter from '../frontmatter.cjs';
 import {
   BOTTOM, LEFT, PAGE_HEIGHT, PAGE_WIDTH, RIGHT, TOP,
-  color, colors, drawCover, drawPageChrome, drawPageFrame, embeddedFonts, normalizeText,
+  color, colors, drawCover, drawPageChrome, embeddedFonts, normalizeText,
 } from '../templates/specification-pdf-template.mjs';
 
 const require = createRequire(import.meta.url);
@@ -137,7 +137,6 @@ function createFlow(document, metadata, theme, fonts) {
   function newPage() {
     page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.paper });
-    drawPageFrame(page, theme);
     pageNumber += 1;
     drawPageChrome(page, metadata, theme, fonts, pageNumber);
     y = TOP - 17;
