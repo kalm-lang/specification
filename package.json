@@ -22,7 +22,7 @@
       "require": "./index.cjs"
     },
     "./map": "./map.json",
-    "./schema": "./schema/map.schema.json",
+    "./schema": "./schemas/map.schema.json",
     "./versions/*": {
       "types": "./versions/*.d.mts",
       "import": "./versions/*.mjs"

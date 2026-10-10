@@ -7,7 +7,7 @@
   "required": ["$schema", "schemaVersion", "latestSeries", "documents"],
   "properties": {
     "$schema": {
-      "const": "./schema/map.schema.json"
+      "const": "./schemas/map.schema.json"
     },
     "schemaVersion": {
       "const": 2

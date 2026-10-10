@@ -11,7 +11,7 @@ them as `@kalm-lang/specification` to GitHub Packages.
 - `map.json` lists the source documents and identifies the latest
   final major/minor series. Each document entry records its series, document
   version, status, and path. Its schema version changes when this structure
-  changes; [`schemas`](schemas/map.schema.json) defines its
+  changes; [`schemas/map.schema.json`](schemas/map.schema.json) defines its
   structure.
 - `index.cjs`, `index.mjs`, and `index.d.ts` provide CommonJS, ESM, and
   TypeScript entry points for packages built from this repository.

@@ -53,7 +53,7 @@ for (const variant of ['versioned', 'full']) {
   const entries = variant === 'full' ? sourceMap.documents : [selected];
   const output = path.join(outputRoot, variant);
   await mkdir(path.join(output, 'documents'), { recursive: true });
-  await mkdir(path.join(output, 'schema'), { recursive: true });
+  await mkdir(path.join(output, 'schemas'), { recursive: true });
 
   for (const entry of entries) {
     await cp(path.join(root, entry.file), path.join(output, entry.file));
@@ -86,7 +86,7 @@ for (const variant of ['versioned', 'full']) {
     cp(path.join(root, 'index.cjs'), path.join(output, 'index.cjs')),
     cp(path.join(root, 'index.mjs'), path.join(output, 'index.mjs')),
     cp(path.join(root, 'index.d.ts'), path.join(output, 'index.d.ts')),
-    cp(path.join(root, 'schema', 'map.schema.json'), path.join(output, 'schema', 'map.schema.json')),
+    cp(path.join(root, 'schemas', 'map.schema.json'), path.join(output, 'schemas', 'map.schema.json')),
   ]);
 }
 
