@@ -5,7 +5,7 @@ const { rgb, StandardFonts } = require('pdf-lib');
 
 const palette = {
   light: {
-    paper: '#F7F4EF', surface: '#F1EBDD', soft: '#EEE7DA', ink: '#30271F',
+    paper: '#F3E8D5', surface: '#F1EBDD', soft: '#EEE7DA', ink: '#30271F',
     muted: '#70604F', line: '#CBBB9F', accent: '#A33E25', accentInk: '#FFF8EC',
     cover: '#F3E8D5', coverSurface: '#E9DCC4', coverInk: '#30271F', watermark: '#D7C6A9',
     tableHead: '#30271F', tableHeadInk: '#FFF8EC',
@@ -79,8 +79,9 @@ export function drawCover(document, metadata, theme, fonts) {
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;
   page.drawLine({ start: { x: stemCenter, y: stemBottom }, end: { x: stemCenter, y: stemTop }, thickness: weight, color: theme.watermark });
-  page.drawLine({ start: { x: markX + markSize * 0.70, y: markY + markSize * 0.76 }, end: { x: markX + markSize * 0.35, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
-  page.drawLine({ start: { x: markX + markSize * 0.35, y: markY + markSize * 0.50 }, end: { x: markX + markSize * 0.70, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
+  const joinX = stemCenter + weight * 0.3;
+  page.drawLine({ start: { x: markX + markSize * 0.70, y: markY + markSize * 0.76 }, end: { x: joinX, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
+  page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: markX + markSize * 0.70, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
 
   const left = LEFT;
   let y = PAGE_HEIGHT - 184;
@@ -122,16 +123,14 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
   });
 
   page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.muted });
-  const badgeWidth = 30;
-  page.drawRectangle({ x: RIGHT - badgeWidth, y: 14, width: badgeWidth, height: 17, color: theme.accent });
   const pageLabel = String(pageNumber).padStart(2, '0');
   const labelWidth = fonts.bold.widthOfTextAtSize(pageLabel, 7.1);
   page.drawText(pageLabel, {
-    x: RIGHT - badgeWidth + (badgeWidth - labelWidth) / 2,
+    x: RIGHT - labelWidth,
     y: 19.1,
     size: 7.1,
     font: fonts.bold,
-    color: theme.accentInk,
+    color: theme.accent,
   });
 }
 
