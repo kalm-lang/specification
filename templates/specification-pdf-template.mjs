@@ -181,7 +181,7 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
     x: RIGHT - editionWidth, y: PAGE_HEIGHT - 30, size: 7.5, font: fonts.bold, color: theme.accent,
   });
 
-  page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.body, color: theme.accent });
+  page.drawText(metadata.date, { x: LEFT, y: 19, size: 7.5, font: fonts.bold, color: theme.accent });
   const pageLabel = String(pageNumber).padStart(2, '0');
   const labelWidth = fonts.bold.widthOfTextAtSize(pageLabel, 7.1);
   page.drawText(pageLabel, {
