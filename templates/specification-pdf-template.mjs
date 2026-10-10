@@ -150,7 +150,7 @@ export function drawCover(document, metadata, theme, fonts) {
     y -= 43;
   }
   y -= 12;
-  const panelHeight = 94;
+  const panelHeight = 80;
   const panelY = y - panelHeight + 4;
   page.drawRectangle({ x: left, y: panelY, width: 80 * MM, height: panelHeight, color: theme.coverSurface, borderColor: theme.watermark, borderWidth: 0.65 });
   page.drawRectangle({ x: left, y: panelY, width: 3, height: panelHeight, color: theme.accent });
