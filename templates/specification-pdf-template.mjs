@@ -11,21 +11,21 @@ const palette = {
     codeInk: '#241B14',
     muted: '#70604F', line: '#CBBB9F', accent: '#A33E25', accentInk: '#FFF8EC',
     cover: '#F3E8D5', coverSurface: '#E9DCC4', coverInk: '#30271F', watermark: '#D7C6A9',
-    tableHead: '#30271F', tableHeadInk: '#FFF8EC',
+    tableHead: '#A33E25', tableHeadInk: '#FFF8EC',
   },
   dark: {
     paper: '#191C19', surface: '#232720', soft: '#2D3329', ink: '#ECE5D7',
     codeInk: '#F2EADC',
     muted: '#B7B5A3', line: '#505748', accent: '#F4A381', accentInk: '#241B14',
     cover: '#191C19', coverSurface: '#232720', coverInk: '#ECE5D7', watermark: '#393C35',
-    tableHead: '#2D3329', tableHeadInk: '#ECE5D7',
+    tableHead: '#F4A381', tableHeadInk: '#241B14',
   },
   print: {
     paper: '#FFFFFF', surface: '#F3F3F1', soft: '#EAE8E2', ink: '#25231F',
     codeInk: '#25231F',
     muted: '#5F5A52', line: '#D0CDC7', accent: '#A33E25', accentInk: '#FFFFFF',
     cover: '#FFFFFF', coverSurface: '#F7F5F1', coverInk: '#25231F', watermark: '#E4E1DC',
-    tableHead: '#25231F', tableHeadInk: '#FFFFFF',
+    tableHead: '#A33E25', tableHeadInk: '#FFFFFF',
   },
 };
 
@@ -37,6 +37,18 @@ export const LEFT = 22 * MM;
 export const RIGHT = PAGE_WIDTH - 20 * MM;
 export const BOTTOM = 20 * MM;
 export const TOP = PAGE_HEIGHT - 23 * MM;
+
+export function drawPageFrame(page, theme) {
+  const inset = 3 * MM;
+  page.drawRectangle({
+    x: inset,
+    y: inset,
+    width: PAGE_WIDTH - 2 * inset,
+    height: PAGE_HEIGHT - 2 * inset,
+    borderColor: theme.line,
+    borderWidth: 0.45,
+  });
+}
 
 export function colors(name) {
   const theme = palette[name];
@@ -122,6 +134,13 @@ export async function embeddedFonts(document) {
 export function drawCover(document, metadata, theme, fonts) {
   const page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.cover });
+  drawPageFrame(page, theme);
+
+  const detailX = PAGE_WIDTH - 27 * MM;
+  const detailY = PAGE_HEIGHT - 25 * MM;
+  page.drawCircle({ x: detailX, y: detailY, size: 18 * MM, color: theme.coverSurface });
+  page.drawCircle({ x: detailX, y: detailY, size: 13 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
+  page.drawCircle({ x: detailX, y: detailY, size: 8 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
 
   const ornamentX = PAGE_WIDTH - 20 * MM;
   const ornamentY = 50 * MM;
@@ -130,7 +149,6 @@ export function drawCover(document, metadata, theme, fonts) {
   page.drawCircle({ x: ornamentX, y: ornamentY, size: 34 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
 
   const markSize = 58 * MM;
-  const markX = PAGE_WIDTH - 74 * MM;
   const markY = 22 * MM;
   const weight = markSize * 0.09;
   const ringLeft = ornamentX - 34 * MM;
@@ -138,29 +156,36 @@ export function drawCover(document, metadata, theme, fonts) {
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;
   page.drawLine({ start: { x: stemCenter, y: stemBottom }, end: { x: stemCenter, y: stemTop }, thickness: weight, color: theme.watermark });
-  const joinX = ringLeft;
-  page.drawLine({ start: { x: markX + markSize * 0.70, y: markY + markSize * 0.76 }, end: { x: joinX, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
-  page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: markX + markSize * 0.70, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
+  const joinX = stemCenter;
+  const armRight = ornamentX - 7 * MM;
+  page.drawLine({ start: { x: armRight, y: markY + markSize * 0.76 }, end: { x: joinX, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
+  page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: armRight, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
 
   const left = LEFT;
-  let y = PAGE_HEIGHT - 184;
+  page.drawRectangle({ x: left, y: PAGE_HEIGHT - 75 * MM, width: 38 * MM, height: 3.5, color: theme.accent });
+  let y = PAGE_HEIGHT - 105 * MM;
   const titleLines = metadata.title.replace(' Language ', ' Language\n').split('\n');
   for (const line of titleLines) {
     page.drawText(normalizeText(line), { x: left, y, size: 34, font: fonts.serifBold, color: theme.coverInk });
     y -= 43;
   }
   y -= 12;
+  const panelHeight = 76;
+  const panelY = y - panelHeight + 4;
+  page.drawRectangle({ x: left, y: panelY, width: 112 * MM, height: panelHeight, color: theme.coverSurface, borderColor: theme.watermark, borderWidth: 0.65 });
+  page.drawRectangle({ x: left, y: panelY, width: 3, height: panelHeight, color: theme.accent });
+  y -= 5;
   for (const [label, value] of [
     ['VERSION', metadata.version],
     ['STATUS', metadata.status.toUpperCase()],
     ['DATE', metadata.date],
     ['JAVA VERSION', metadata.javaversion],
   ]) {
-    page.drawText(label, { x: left, y, size: 8.4, font: fonts.bold, color: theme.accent });
-    page.drawText(normalizeText(value), { x: left + 82, y, size: 8.4, font: fonts.bold, color: theme.accent });
+    page.drawText(label, { x: left + 12, y, size: 8.4, font: fonts.bold, color: theme.accent });
+    page.drawText(normalizeText(value), { x: left + 82, y, size: 8.4, font: fonts.bold, color: theme.coverInk });
     y -= 16;
   }
-  page.drawRectangle({ x: left, y: y - 13, width: 88, height: 2.3, color: theme.accent });
+  page.drawRectangle({ x: left, y: y - 13, width: 122, height: 2.3, color: theme.accent });
   return page;
 }
 
@@ -172,7 +197,7 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
   page.drawLine({ start: { x: markX + 4.5, y: markY + 3.3 }, end: { x: markX + 4.5, y: markY + 11.7 }, thickness: 1.8, color: theme.accentInk });
   page.drawLine({ start: { x: markX + 11.1, y: markY + 11.2 }, end: { x: markX + 5.1, y: markY + 7.5 }, thickness: 1.8, color: theme.accentInk });
   page.drawLine({ start: { x: markX + 5.1, y: markY + 7.5 }, end: { x: markX + 11.1, y: markY + 3.8 }, thickness: 1.8, color: theme.accentInk });
-  page.drawText('Kalm Language Specification', {
+  page.drawText('Kalm Specification', {
     x: markX + 21, y: PAGE_HEIGHT - 30, size: 8.2, font: fonts.bold, color: theme.accent,
   });
   const edition = `${metadata.version}  /  ${metadata.status.toUpperCase()}`;

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import frontMatter from '../frontmatter.cjs';
 import {
   BOTTOM, LEFT, PAGE_HEIGHT, PAGE_WIDTH, RIGHT, TOP,
-  color, colors, drawCover, drawPageChrome, embeddedFonts, normalizeText,
+  color, colors, drawCover, drawPageChrome, drawPageFrame, embeddedFonts, normalizeText,
 } from '../templates/specification-pdf-template.mjs';
 
 const require = createRequire(import.meta.url);
@@ -16,6 +16,8 @@ const { parseFrontMatter } = frontMatter;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const themes = ['light', 'dark', 'print'];
 const CONTENT_BOTTOM = BOTTOM + 15;
+const BODY_SIZE = 9.5;
+const BODY_LEADING = 14;
 
 function parseArguments(args) {
   const options = { outputDir: path.join(root, 'output', 'pdf'), theme: 'all' };
@@ -135,6 +137,7 @@ function createFlow(document, metadata, theme, fonts) {
   function newPage() {
     page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.paper });
+    drawPageFrame(page, theme);
     pageNumber += 1;
     drawPageChrome(page, metadata, theme, fonts, pageNumber);
     y = TOP - 17;
@@ -154,7 +157,7 @@ function createFlow(document, metadata, theme, fonts) {
       cursorX += width;
     }
   }
-  function drawRuns(runs, { x = LEFT, width = RIGHT - LEFT, size = 9.5, leading = 14, color: ink } = {}) {
+  function drawRuns(runs, { x = LEFT, width = RIGHT - LEFT, size = BODY_SIZE, leading = BODY_LEADING, color: ink } = {}) {
     const lines = wrapRuns(runs, width, size, fonts);
     for (const line of lines) {
       ensure(leading);
@@ -239,23 +242,54 @@ function drawCode(flow, token) {
   flow.gap(7);
 }
 
-function drawList(flow, token) {
-  const ordered = token.ordered;
-  const base = token.start ?? 1;
+function drawList(flow, token, level = 0) {
+  const base = Number(token.start) || 1;
+  const itemX = LEFT + level * 12;
+  const bodyX = itemX + 18;
+  const bodyWidth = RIGHT - bodyX;
   token.items.forEach((item, index) => {
-    const marker = ordered ? `${base + index}.` : '-';
-    const indent = token.depth ? token.depth * 12 : 0;
+    const marker = item.task ? (item.checked ? '[x]' : '[ ]') : token.ordered ? `${base + index}.` : '-';
     const itemTokens = item.tokens ?? [];
-    const paragraph = itemTokens.find((part) => part.type === 'text' || part.type === 'paragraph');
-    const inline = paragraph?.type === 'paragraph' ? paragraph.tokens : paragraph?.tokens ?? [{ type: 'text', text: textOf(itemTokens) }];
-    flow.drawRuns([{ text: `${marker}  ` }], { x: LEFT + indent, width: 20, size: 9.2, leading: 13 });
-    const markerY = flow.getY();
-    flow.setY(markerY + 13);
-    flow.drawRuns(inlineRuns(inline), { x: LEFT + indent + 18, width: RIGHT - LEFT - indent - 18, size: 9.2, leading: 13 });
-    for (const child of itemTokens.filter((part) => part.type === 'list')) drawList(flow, child);
-    flow.gap(3);
+    let markerPending = true;
+    const drawItemText = (runs) => {
+      if (markerPending) {
+        flow.ensure(BODY_LEADING);
+        flow.drawTextLine([{ text: marker }], itemX, flow.getY() - BODY_SIZE, BODY_SIZE);
+        markerPending = false;
+      }
+      flow.drawRuns(runs, { x: bodyX, width: bodyWidth, size: BODY_SIZE, leading: BODY_LEADING });
+    };
+
+    for (const part of itemTokens) {
+      if (part.type === 'text' || part.type === 'paragraph') {
+        drawItemText(inlineRuns(part.tokens ?? [{ type: 'text', text: part.text ?? '' }]));
+        if (part.type === 'paragraph') flow.gap(2);
+      } else if (part.type === 'list') {
+        if (markerPending) {
+          flow.ensure(BODY_LEADING);
+          flow.drawTextLine([{ text: marker }], itemX, flow.getY() - BODY_SIZE, BODY_SIZE);
+          flow.gap(BODY_LEADING);
+          markerPending = false;
+        }
+        drawList(flow, part, level + 1);
+      } else {
+        if (markerPending) {
+          flow.ensure(BODY_LEADING);
+          flow.drawTextLine([{ text: marker }], itemX, flow.getY() - BODY_SIZE, BODY_SIZE);
+          flow.gap(BODY_LEADING);
+          markerPending = false;
+        }
+        renderTokens(flow, [part]);
+      }
+    }
+    if (markerPending) {
+      flow.ensure(BODY_LEADING);
+      flow.drawTextLine([{ text: marker }], itemX, flow.getY() - BODY_SIZE, BODY_SIZE);
+      flow.gap(BODY_LEADING);
+    }
+    flow.gap(2);
   });
-  flow.gap(4);
+  flow.gap(3);
 }
 
 function drawTable(flow, token) {
@@ -275,7 +309,7 @@ function drawTable(flow, token) {
     for (let column = 0; column < columnCount; column += 1) {
       const isHead = rowIndex === 0;
       const fill = isHead ? flow.theme.tableHead : (rowIndex % 2 === 0 ? flow.theme.soft : flow.theme.paper);
-      flow.getPage().drawRectangle({ x, y: yTop - rowHeight, width: widths[column], height: rowHeight, color: fill, borderColor: flow.theme.line, borderWidth: 0.4 });
+      flow.getPage().drawRectangle({ x, y: yTop - rowHeight, width: widths[column], height: rowHeight, color: fill, borderColor: flow.theme.line, borderWidth: 0.6 });
       let lineY = yTop - 9;
       for (const line of wrapped[column]) {
         flow.drawTextLine(line, x + 6, lineY - fontSize, fontSize, { color: isHead ? flow.theme.tableHeadInk : undefined });
@@ -298,7 +332,7 @@ function drawBlockquote(flow, token) {
   const height = lines.length * 14 + 14;
   flow.ensure(height);
   const top = flow.getY();
-  flow.getPage().drawRectangle({ x: LEFT, y: top - height, width: RIGHT - LEFT, height, color: flow.theme.surface });
+  flow.getPage().drawRectangle({ x: LEFT, y: top - height, width: RIGHT - LEFT, height, color: flow.theme.surface, borderColor: flow.theme.line, borderWidth: 0.6 });
   flow.getPage().drawRectangle({ x: LEFT, y: top - height, width: 3, height, color: flow.theme.accent });
   lines.forEach((line, index) => flow.drawTextLine(line, LEFT + 13, top - 10 - index * 14, 9.2));
   flow.setY(top - height - 8);
@@ -311,8 +345,8 @@ function renderTokens(flow, tokens) {
         if (token.depth === 1) break;
         const size = token.depth === 2 ? 17 : token.depth === 3 ? 12.5 : 10.5;
         flow.gap(token.depth === 2 ? 10 : 6);
-        flow.drawRuns([{ text: textOf(token.tokens), bold: true }], { size, leading: size + 5, color: token.depth === 2 ? flow.theme.accent : flow.theme.ink, after: 4 });
-        flow.gap(token.depth === 2 ? 5 : 3);
+        flow.drawRuns([{ text: textOf(token.tokens), bold: true }], { size, leading: size + 2.2, color: token.depth === 2 ? flow.theme.accent : flow.theme.ink });
+        flow.gap(token.depth === 2 ? 4 : 3);
         break;
       }
       case 'paragraph': drawParagraph(flow, token); break;
