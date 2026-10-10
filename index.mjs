@@ -1,5 +1,4 @@
-import specifications from './index.cjs';
-
-export const latestVersion = specifications.latestVersion;
-export const listSpecifications = specifications.listSpecifications;
-export const getSpecification = specifications.getSpecification;
+import specification from './index.cjs';
+export const latestVersion = specification.latestVersion;
+export const versions = specification.versions;
+export const drafts = specification.drafts;

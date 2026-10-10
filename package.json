@@ -1,7 +1,7 @@
 {
   "name": "@kalm-lang/specification",
   "version": "1.0.0",
-  "description": "Versioned Kalm language specifications and lookup API",
+  "description": "Static, versioned Kalm language specifications",
   "license": "MIT",
   "homepage": "https://kalm.tcraft.link/",
   "bugs": {
@@ -12,6 +12,9 @@
     "url": "https://github.com/kalm-lang/specification.git"
   },
   "type": "module",
+  "scripts": {
+    "build:pdfs": "node scripts/build-pdfs.mjs"
+  },
   "main": "./index.cjs",
   "module": "./index.mjs",
   "types": "./index.d.ts",
@@ -21,8 +24,8 @@
       "import": "./index.mjs",
       "require": "./index.cjs"
     },
-    "./map": "./map.json",
-    "./schema": "./schemas/map.schema.json",
+    "./schema": "./schemas/frontmatter.schema.json",
+    "./schemas/frontmatter.schema.json": "./schemas/frontmatter.schema.json",
     "./versions/*": {
       "types": "./versions/*.d.mts",
       "import": "./versions/*.mjs"
@@ -37,9 +40,9 @@
     "index.cjs",
     "index.mjs",
     "index.d.ts",
-    "map.json",
     "schemas/",
     "documents/",
+    "pdf/",
     "versions/",
     "drafts/",
     "README.md",
@@ -50,5 +53,9 @@
   },
   "engines": {
     "node": ">=20.18.0"
+  },
+  "devDependencies": {
+    "marked": "17.0.5",
+    "pdf-lib": "1.17.1"
   }
 }

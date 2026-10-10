@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional mapped SemVer version (for example 1.1.0). Empty uses GitVersion.'
+        description: 'Optional final specification SemVer version (for example 1.1.0). Empty uses GitVersion.'
         required: false
         type: string
 
@@ -29,6 +29,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Node.js and GitHub Packages authentication
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@kalm-lang'
+
+      - name: Install Node.js build dependencies
+        run: npm install --include=dev --ignore-scripts --no-audit --no-fund
+
+      - name: Generate specification PDFs
+        run: npm run build:pdfs
+
       - name: Install GitVersion
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
         uses: GitTools/actions/gitversion/setup@v4.7.0
@@ -48,13 +61,6 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
           GITVERSION_VERSION: ${{ steps.gitversion.outputs.majorMinorPatch }}
         run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
-
-      - name: Set up Node.js and GitHub Packages authentication
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://npm.pkg.github.com
-          scope: '@kalm-lang'
 
       - name: Reject an existing release or tag
         env:
@@ -129,13 +135,30 @@ jobs:
             echo "Expected exactly one version-matched specification Markdown file; found ${#SPEC_FILES[@]}" >&2
             exit 1
           fi
+          mapfile -t PDF_FILES < <(find .release-packages/versioned/pdf -maxdepth 1 -type f -name '*.pdf' -print)
+          if [ "${#PDF_FILES[@]}" -ne 3 ]; then
+            echo "Expected one light, dark, and print specification PDF; found ${#PDF_FILES[@]}" >&2
+            exit 1
+          fi
 
           SPEC_FILE="${SPEC_FILES[0]}"
-          SPECIFICATION_VERSION=$(node -e "const map = require('./.release-packages/versioned/map.json'); console.log(map.documents[0].specificationVersion)")
+          SPECIFICATION_VERSION=$(node -e "const fs = require('node:fs'); const { parseFrontMatter } = require('./frontmatter.cjs'); console.log(parseFrontMatter(fs.readFileSync(process.argv[1], 'utf8'), process.argv[1]).version)" "$SPEC_FILE")
+          SPEC_FILENAME="${SPEC_FILE##*/}"
+          SPEC_BASENAME="${SPEC_FILENAME%.md}"
+          PDF_ASSETS=()
+          for theme in light dark print; do
+            PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
+            if [ ! -f "$PDF_FILE" ]; then
+              echo "Missing ${theme} specification PDF: $PDF_FILE" >&2
+              exit 1
+            fi
+            THEME_LABEL="${theme^}"
+            PDF_ASSETS+=("$PDF_FILE#Kalm Language Specification ${SPECIFICATION_VERSION} (${THEME_LABEL} PDF)")
+          done
           NOTES=$(cat <<'EOF'
           ## Kalm language specification SPECIFICATION_VERSION
 
-          This release includes the version-matched Markdown specification as its only release asset.
+          This release includes the version-matched Markdown specification and light, dark, and print PDF editions.
 
           ## Published packages
 
@@ -148,6 +171,7 @@ jobs:
 
           gh release create "$RELEASE_TAG" \
             "$SPEC_FILE#Kalm Language Specification ${SPECIFICATION_VERSION} (Markdown)" \
+            "${PDF_ASSETS[@]}" \
             --verify-tag \
             --title "Kalm Language Specification ${RELEASE_VERSION}" \
             --notes "$NOTES" \

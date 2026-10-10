@@ -1,40 +1,31 @@
 # Kalm language specification
 
-This repository holds the versioned Kalm language specifications and publishes
-them as `@kalm-lang/specification` to GitHub Packages.
+This repository contains the versioned Kalm language specifications and
+publishes them as `@kalm-lang/specification` to GitHub Packages.
 
-## Repository layout
+## Documents and metadata
 
-- `documents/` contains the Markdown specification documents. Final
-  versions use `v<major>.<minor>.md` (for example, `v1.1.md`); historical drafts
-  retain the `-draft` suffix. Names stay short and version-first.
-- `map.json` lists the source documents and identifies the latest
-  final major/minor series. Each document entry records its series, document
-  version, status, and path. Its schema version changes when this structure
-  changes; [`schemas/map.schema.json`](schemas/map.schema.json) defines its
-  structure.
-- `index.cjs`, `index.mjs`, and `index.d.ts` provide CommonJS, ESM, and
-  TypeScript entry points for packages built from this repository.
-- `scripts/` prepares the focused and historical package variants and resolves
-  the release version.
-- `.github/workflows/release.yml` handles tag and manually started releases.
+The Markdown files in [`documents/`](documents/) are the source of truth. Build
+scripts discover every `*.md` file in that folder; no separate document map is
+maintained. Each file starts with YAML front matter validated by
+[`schemas/frontmatter.schema.json`](schemas/frontmatter.schema.json). The
+front matter is also exported in the JavaScript API. `revision` is a positive
+integer that counts edits to that specification version.
 
-## Published packages
+The visible Markdown heading and concise edition details follow the front
+matter. The `[main]` reference points to the first section included in generated
+PDFs, allowing PDFs to use the metadata for their cover without repeating the
+Markdown preface.
 
-Each release publishes two versions of the same package:
+Documents use `X.Y` major/minor version identities and filenames such as
+`v1.1.md` or `v1.1-draft.md`. Published npm packages use the required `X.Y.Z`
+SemVer format:
 
-- `@kalm-lang/specification@1.1.0` contains only the document mapped to
-  `1.1.0`.
+- `@kalm-lang/specification@1.1.0` contains the final `1.1` document.
 - `@kalm-lang/specification@1.1.0-full` contains all documents, including
   historical drafts.
 
-The package version is the release SemVer. The map connects its major/minor
-series to the document's own version label, so patch releases can update a
-document without changing its identity. Historical draft labels remain intact.
-Add a mapping and its Markdown document before releasing a new major or minor
-specification version.
-
-## Importing from another project
+## Importing
 
 Configure npm to resolve the organization scope through GitHub Packages and
 authenticate with a token that can read the package:
@@ -44,7 +35,7 @@ authenticate with a token that can read the package:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Then install a focused or full version:
+Then install a package:
 
 ```sh
 npm install @kalm-lang/specification@1.1.0
@@ -52,46 +43,54 @@ npm install @kalm-lang/specification@1.1.0
 npm install @kalm-lang/specification@1.1.0-full
 ```
 
-Import the Markdown as a string from a versioned module. This uses a static ESM
-import; the text is embedded in the module, so no lookup function or file read is
-needed at runtime:
+The root API is static data: each edition record contains the Markdown and all
+front matter fields. It exposes `latestVersion`, final `versions`, and `drafts`;
+there are no runtime document lookup functions or file reads.
 
 ```js
-import specification from '@kalm-lang/specification/versions/1.1.0';
+import { drafts, latestVersion, versions } from '@kalm-lang/specification';
 
-console.log(specification);
+const markdown = versions['1.1'].markdown;
+const metadata = versions['1.1'].metadata;
+const latestDraft = drafts['1.1'];
+
+console.log(latestVersion, metadata.revision, latestDraft?.metadata.status);
 ```
 
-The full package also provides a major/minor alias for each final specification,
-such as `@kalm-lang/specification/versions/1.1`. Draft modules use a separate
-explicit path:
+Each document is also available as a static ESM module. It exports the Markdown
+as its default value and its front matter as `metadata`:
 
 ```js
-import draft from '@kalm-lang/specification/drafts/1.1-draft';
+import specification, { metadata } from '@kalm-lang/specification/versions/1.1';
+import draft from '@kalm-lang/specification/drafts/1.1';
+
+console.log(specification, metadata.javaversion, draft);
 ```
 
-The function API remains available when dynamic selection is useful. Its
-listing and lookup return final specifications by default; draft access requires
-`includeDrafts: true` or `{ status: 'draft' }`.
+The schema is published at `@kalm-lang/specification/schema` and
+`@kalm-lang/specification/schemas/frontmatter.schema.json`.
 
-The mapping is also available as JSON:
+## PDFs
 
-```js
-import map from '@kalm-lang/specification/map' with { type: 'json' };
+Generate light, dark, and print editions with Node.js:
+
+```sh
+npm install
+npm run build:pdfs
 ```
 
-The schema is also published as `@kalm-lang/specification/schema`.
+Choose one theme with `npm run build:pdfs -- --theme print` (also accepts
+`light` or `dark`). Outputs are named `<document>-<theme>.pdf` in `output/pdf/`.
 
 ## Releasing
 
-Push a `vX.Y.Z` tag to release that mapped version, or start **Release
-specification** with `workflow_dispatch` and enter an optional `X.Y.Z`. An
-empty manual version uses GitVersion's next patch when it matches the latest
-mapped final series; otherwise it starts at patch zero for that series. The
-workflow rejects malformed or unmapped versions and stops when the GitHub
-release or tag already exists.
-It publishes both package variants and creates a GitHub release with generated
-notes.
+Push a `vX.Y.Z` tag to release a final specification version, or start **Release
+specification** with `workflow_dispatch`. An empty manual version uses
+GitVersion's next patch when it matches the latest final series; otherwise it
+starts at patch zero for that series. The workflow validates the release
+against front matter and stops when the GitHub release or tag already exists.
 
-Versions must use plain `X.Y.Z` SemVer and must have a matching major/minor
-series in `map.json`.
+The workflow generates all three PDF themes, prepares focused and historical
+packages, and attaches the matching Markdown and PDFs to the GitHub release.
+Package releases use plain `X.Y.Z` SemVer; specification identities and import
+paths use `X.Y`.

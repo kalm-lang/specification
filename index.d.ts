@@ -1,20 +1,23 @@
-export interface Specification {
+export interface SpecificationFrontMatter {
+  title: string;
+  version: string;
+  status: 'draft' | 'final';
+  date: string;
+  lastmod: string;
+  javaversion: string;
+  revision: number;
+  [key: string]: string | number | boolean | null;
+}
+export interface SpecificationMetadata extends SpecificationFrontMatter {
   majorMinor: string;
   specificationVersion: string;
-  status: 'draft' | 'final';
+}
+export interface SpecificationRecord {
   file: string;
+  specificationVersion: string;
+  metadata: Readonly<SpecificationMetadata>;
+  markdown: string;
 }
-
-export interface ListSpecificationsOptions {
-  /** Include draft documents in addition to final specifications. Defaults to false. */
-  includeDrafts?: boolean;
-}
-
-export interface GetSpecificationOptions {
-  /** Select a draft explicitly. Defaults to final. */
-  status?: Specification['status'];
-}
-
 export declare const latestVersion: string;
-export declare function listSpecifications(options?: ListSpecificationsOptions): Specification[];
-export declare function getSpecification(version: string, options?: GetSpecificationOptions): string;
+export declare const versions: Readonly<Record<string, SpecificationRecord>>;
+export declare const drafts: Readonly<Record<string, SpecificationRecord>>;
