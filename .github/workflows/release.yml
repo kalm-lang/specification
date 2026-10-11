@@ -145,9 +145,34 @@ jobs:
           fi
 
           SPEC_FILE="${SPEC_FILES[0]}"
-          SPECIFICATION_VERSION=$(node -e "const fs = require('node:fs'); const { parseFrontMatter } = require('./frontmatter.cjs'); console.log(parseFrontMatter(fs.readFileSync(process.argv[1], 'utf8'), process.argv[1]).version)" "$SPEC_FILE")
+          mapfile -t METADATA < <(node - "$SPEC_FILE" <<'NODE'
+          const fs = require('node:fs');
+          const { parseFrontMatter } = require('./frontmatter.cjs');
+          const file = process.argv[2];
+          const metadata = parseFrontMatter(fs.readFileSync(file, 'utf8'), file);
+          for (const key of ['title', 'version', 'status', 'date', 'lastmod', 'javaversion', 'revision']) {
+            const value = metadata[key];
+            if (value === undefined || value === null || /[\r\n]/.test(String(value))) {
+              throw new Error(`Missing or invalid release metadata: ${key}`);
+            }
+            console.log(String(value));
+          }
+          NODE
+          )
+          if [ "${#METADATA[@]}" -ne 7 ]; then
+            echo "Could not read all required specification metadata" >&2
+            exit 1
+          fi
+          SPECIFICATION_TITLE="${METADATA[0]}"
+          SPECIFICATION_VERSION="${METADATA[1]}"
+          SPECIFICATION_STATUS="${METADATA[2]}"
+          SPECIFICATION_DATE="${METADATA[3]}"
+          SPECIFICATION_LASTMOD="${METADATA[4]}"
+          SPECIFICATION_JAVA_VERSION="${METADATA[5]}"
+          SPECIFICATION_REVISION="${METADATA[6]}"
           SPEC_FILENAME="${SPEC_FILE##*/}"
           SPEC_BASENAME="${SPEC_FILENAME%.md}"
+          METADATA_LABEL="${SPECIFICATION_VERSION} · ${SPECIFICATION_STATUS^} · ${SPECIFICATION_DATE} · Java ${SPECIFICATION_JAVA_VERSION} · Revision ${SPECIFICATION_REVISION}"
           PDF_ASSETS=()
           for theme in light dark print; do
             PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
@@ -156,12 +181,21 @@ jobs:
               exit 1
             fi
             THEME_LABEL="${theme^}"
-            PDF_ASSETS+=("$PDF_FILE#Kalm Language Specification ${SPECIFICATION_VERSION} (${THEME_LABEL} PDF)")
+            PDF_ASSETS+=("$PDF_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · ${THEME_LABEL} PDF")
           done
           NOTES=$(cat <<'EOF'
-          ## Kalm language specification SPECIFICATION_VERSION
+          ## SPECIFICATION_TITLE SPECIFICATION_VERSION
 
-          This release includes the version-matched Markdown specification and light, dark, and print PDF editions.
+          | Metadata | Value |
+          | --- | --- |
+          | Specification version | SPECIFICATION_VERSION |
+          | Status | SPECIFICATION_STATUS |
+          | Date | SPECIFICATION_DATE |
+          | Last modified | SPECIFICATION_LASTMOD |
+          | Minimum Java version | SPECIFICATION_JAVA_VERSION |
+          | Revision | SPECIFICATION_REVISION |
+
+          The version-matched Markdown specification and its light, dark, and print PDF editions are attached below.
 
           ## Published packages
 
@@ -169,13 +203,19 @@ jobs:
           - Historical bundle: `@kalm-lang/specification@RELEASE_VERSION-full`
           EOF
           )
+          NOTES="${NOTES//SPECIFICATION_TITLE/$SPECIFICATION_TITLE}"
           NOTES="${NOTES//SPECIFICATION_VERSION/$SPECIFICATION_VERSION}"
+          NOTES="${NOTES//SPECIFICATION_STATUS/$SPECIFICATION_STATUS}"
+          NOTES="${NOTES//SPECIFICATION_DATE/$SPECIFICATION_DATE}"
+          NOTES="${NOTES//SPECIFICATION_LASTMOD/$SPECIFICATION_LASTMOD}"
+          NOTES="${NOTES//SPECIFICATION_JAVA_VERSION/$SPECIFICATION_JAVA_VERSION}"
+          NOTES="${NOTES//SPECIFICATION_REVISION/$SPECIFICATION_REVISION}"
           NOTES="${NOTES//RELEASE_VERSION/$RELEASE_VERSION}"
 
           gh release create "$RELEASE_TAG" \
-            "$SPEC_FILE#Kalm Language Specification ${SPECIFICATION_VERSION} (Markdown)" \
+            "$SPEC_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · Markdown" \
             "${PDF_ASSETS[@]}" \
             --verify-tag \
-            --title "Kalm Language Specification ${RELEASE_VERSION}" \
+            --title "${SPECIFICATION_TITLE} ${RELEASE_VERSION}" \
             --notes "$NOTES" \
             --generate-notes
