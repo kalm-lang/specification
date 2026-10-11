@@ -124,32 +124,48 @@ export function drawCover(document, metadata, theme, fonts) {
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: theme.cover });
 
   const ornamentX = PAGE_WIDTH - 20 * MM;
-  const ornamentY = 50 * MM;
-  page.drawCircle({ x: ornamentX, y: ornamentY, size: 52 * MM, color: theme.coverSurface });
-  page.drawCircle({ x: ornamentX, y: ornamentY, size: 43 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
-  page.drawCircle({ x: ornamentX, y: ornamentY, size: 34 * MM, borderColor: theme.watermark, borderWidth: 0.6 });
+  const ornamentY = 55 * MM;
+  page.drawCircle({ x: ornamentX, y: ornamentY, size: 74 * MM, color: theme.coverSurface });
+  page.drawCircle({ x: ornamentX, y: ornamentY, size: 60 * MM, borderColor: theme.watermark, borderWidth: 0.7 });
+  page.drawCircle({ x: ornamentX, y: ornamentY, size: 45 * MM, borderColor: theme.watermark, borderWidth: 0.7 });
 
-  const markSize = 58 * MM;
-  const markY = 22 * MM;
+  const markSize = 74 * MM;
+  const markY = ornamentY - markSize / 2;
   const weight = markSize * 0.09;
-  const ringLeft = ornamentX - 34 * MM;
+  const ringLeft = ornamentX - 45 * MM;
   const stemCenter = ringLeft + weight / 2;
   const stemBottom = markY + markSize * 0.18;
   const stemTop = markY + markSize * 0.82;
   page.drawLine({ start: { x: stemCenter, y: stemBottom }, end: { x: stemCenter, y: stemTop }, thickness: weight, color: theme.watermark });
   const joinX = stemCenter;
-  const armRight = ornamentX - 7 * MM;
+  const armRight = ornamentX - 10 * MM;
   page.drawLine({ start: { x: armRight, y: markY + markSize * 0.76 }, end: { x: joinX, y: markY + markSize * 0.50 }, thickness: weight, color: theme.watermark });
   page.drawLine({ start: { x: joinX, y: markY + markSize * 0.50 }, end: { x: armRight, y: markY + markSize * 0.24 }, thickness: weight, color: theme.watermark });
 
   const left = LEFT;
-  let y = PAGE_HEIGHT - 85 * MM;
-  const titleLines = metadata.title.replace(' Language ', ' Language\n').split('\n');
-  for (const line of titleLines) {
-    page.drawText(normalizeText(line), { x: left, y, size: 34, font: fonts.serifBold, color: theme.coverInk });
-    y -= 43;
+  let y = PAGE_HEIGHT - 72 * MM;
+  const isKalm = metadata.title.startsWith('Kalm ');
+  if (isKalm) {
+    page.drawText('Kalm', { x: left, y, size: 72, font: fonts.serifBold, color: theme.coverInk });
+    y -= 62;
   }
-  y -= 12;
+  const title = isKalm ? metadata.title.slice(5).replace(' Specification', '\nSpecification') : metadata.title;
+  const titleLines = [];
+  for (const paragraph of title.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      if (line && fonts.serifBold.widthOfTextAtSize(normalizeText(`${line} ${word}`), 32) > RIGHT - LEFT) {
+        titleLines.push(line);
+        line = word;
+      } else line = line ? `${line} ${word}` : word;
+    }
+    if (line) titleLines.push(line);
+  }
+  for (const line of titleLines) {
+    page.drawText(normalizeText(line), { x: left, y, size: 32, font: fonts.serifBold, color: theme.coverInk });
+    y -= 40;
+  }
+  y -= 18;
   const panelHeight = 80;
   const panelY = y - panelHeight + 4;
   page.drawRectangle({ x: left, y: panelY, width: 80 * MM, height: panelHeight, color: theme.coverSurface, borderColor: theme.watermark, borderWidth: 0.65 });

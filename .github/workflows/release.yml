@@ -39,6 +39,9 @@ jobs:
       - name: Install Node.js build dependencies
         run: npm install --include=dev --ignore-scripts --no-audit --no-fund
 
+      - name: Check PDF layout and pagination
+        run: npm run test:pdfs
+
       - name: Generate specification PDFs
         run: npm run build:pdfs
 

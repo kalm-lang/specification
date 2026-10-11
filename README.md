@@ -82,6 +82,18 @@ npm run build:pdfs
 Choose one theme with `npm run build:pdfs -- --theme print` (also accepts
 `light` or `dark`). Outputs are named `<document>-<theme>.pdf` in `output/pdf/`.
 
+The renderer measures content before placing it: headings stay with the start
+of their sections, short paragraphs and examples stay together, and longer
+paragraphs avoid single lines at page edges. Code preserves indentation when
+wrapped and prefers source boundaries when split. Tables size columns from
+their content and repeat headers on subsequent pages. Contents entries include
+page numbers and links to the corresponding sections.
+
+When the last page is almost empty, a bounded reflow pass tries slightly tighter
+body spacing without changing font sizes. It is used only when it removes a page.
+
+Run the layout and pagination regression checks with `npm run test:pdfs`.
+
 ## Releasing
 
 Push a `vX.Y.Z` tag to release a final specification version, or start **Release
