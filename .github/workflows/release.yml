@@ -42,9 +42,6 @@ jobs:
       - name: Check PDF layout and pagination
         run: npm run test:pdfs
 
-      - name: Generate specification PDFs
-        run: npm run build:pdfs
-
       - name: Install GitVersion
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
         uses: GitTools/actions/gitversion/setup@v4.7.0
@@ -64,6 +61,11 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
           GITVERSION_VERSION: ${{ steps.gitversion.outputs.majorMinorPatch }}
         run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
+
+      - name: Generate release-version PDFs
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: npm run build:pdfs -- --version "$RELEASE_VERSION"
 
       - name: Reject an existing release or tag
         env:

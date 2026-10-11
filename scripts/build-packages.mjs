@@ -150,12 +150,13 @@ for (const variant of ['versioned', 'full']) {
 
   for (const entry of entries) {
     await cp(path.join(root, entry.file), path.join(output, entry.file));
-    const documentName = path.parse(entry.file).name;
-    for (const theme of pdfThemes) {
-      const pdfName = `${documentName}-${theme}.pdf`;
-      await cp(path.join(root, 'output', 'pdf', pdfName), path.join(output, 'pdf', pdfName));
-    }
     await writeStaticModule(output, entry.status === 'draft' ? 'drafts' : 'versions', entry);
+  }
+  // Both package variants carry the PDFs for this release's selected final document.
+  const selectedDocumentName = path.parse(selected.file).name;
+  for (const theme of pdfThemes) {
+    const pdfName = `${selectedDocumentName}-${theme}.pdf`;
+    await cp(path.join(root, 'output', 'pdf', pdfName), path.join(output, 'pdf', pdfName));
   }
 
   const packageJson = {

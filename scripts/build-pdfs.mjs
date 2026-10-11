@@ -27,16 +27,30 @@ const CODE_LABEL_HEIGHT = 19;
 const CODE_PADDING = 10;
 
 function parseArguments(args) {
-  const options = { outputDir: path.join(root, 'output', 'pdf'), theme: 'all' };
+  const options = { outputDir: path.join(root, 'output', 'pdf'), theme: 'all', all: false };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === '--output-dir') options.outputDir = path.resolve(args[++index] ?? '');
     else if (args[index] === '--theme') options.theme = args[++index] ?? '';
+    else if (args[index] === '--version') {
+      options.version = args[++index] ?? '';
+      if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y or X.Y.Z value');
+    } else if (args[index] === '--all') options.all = true;
     else throw new Error(`Unknown option: ${args[index]}`);
+  }
+  if (options.all && options.version) throw new Error('Use either --all or --version, not both');
+  if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$/.test(options.version)) {
+    throw new Error(`Unsupported specification version ${options.version}; use X.Y or X.Y.Z`);
   }
   if (options.theme !== 'all' && !themes.includes(options.theme)) {
     throw new Error(`Unsupported theme ${options.theme}; choose all, light, dark, or print`);
   }
   return options;
+}
+
+function compareVersions(left, right) {
+  const [leftMajor, leftMinor] = left.split('.').map(Number);
+  const [rightMajor, rightMinor] = right.split('.').map(Number);
+  return leftMajor - rightMajor || leftMinor - rightMinor;
 }
 
 function headingSlug(line) {
@@ -632,16 +646,29 @@ async function main() {
   const sources = (await readdir(documentsDir)).filter((name) => name.endsWith('.md')).sort()
     .map((name) => path.join(documentsDir, name));
   if (!sources.length) throw new Error(`No Markdown documents found in ${documentsDir}`);
+  const documents = await Promise.all(sources.map(async (source) => {
+    const markdown = await readFile(source, 'utf8');
+    return { source, metadata: parseFrontMatter(markdown, path.relative(root, source)) };
+  }));
+  const latestFinalVersion = documents.filter(({ metadata }) => metadata.status === 'final')
+    .map(({ metadata }) => metadata.version).sort(compareVersions).at(-1);
+  if (!options.all && !latestFinalVersion) throw new Error('No final specification version found');
+  const targetVersion = options.version?.split('.').slice(0, 2).join('.') ?? latestFinalVersion;
+  const finalOnly = !options.version || options.version.split('.').length === 3;
+  const selected = options.all ? documents : documents.filter(({ metadata }) => (
+    metadata.version === targetVersion && (!finalOnly || metadata.status === 'final')
+  ));
+  if (!selected.length) throw new Error(`No specification documents found for version ${targetVersion}`);
   await mkdir(options.outputDir, { recursive: true });
   const selectedThemes = options.theme === 'all' ? themes : [options.theme];
-  for (const source of sources) {
+  for (const { source } of selected) {
     for (const themeName of selectedThemes) {
       const outputPath = path.join(options.outputDir, `${path.parse(source).name}-${themeName}.pdf`);
       await buildPdf(source, outputPath, themeName);
       console.log(`Generated ${path.relative(root, outputPath)}`);
     }
   }
-  console.log(`Generated ${sources.length * selectedThemes.length} specification PDFs in ${options.outputDir}`);
+  console.log(`Generated ${selected.length * selectedThemes.length} PDFs for ${options.all ? 'all specification versions' : `version ${targetVersion}`} in ${options.outputDir}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
