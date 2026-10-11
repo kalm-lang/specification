@@ -1,8 +1,34 @@
 'use strict';
 
-const REQUIRED_FIELDS = ['$schema', 'title', 'version', 'status', 'date', 'lastmod', 'javaversion', 'revision'];
-const SERIES_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const schema = require('./schemas/frontmatter.schema.json');
+
+function validateAgainstSchema(metadata, source) {
+  const errors = [];
+  for (const field of schema.required) {
+    if (!Object.hasOwn(metadata, field)) errors.push(`missing required field ${field}`);
+  }
+  for (const [key, value] of Object.entries(metadata)) {
+    const rule = schema.properties[key];
+    if (!rule) {
+      if (schema.additionalProperties?.type && !schema.additionalProperties.type.includes(value === null ? 'null' : typeof value)) {
+        errors.push(`${key} must be a scalar`);
+      }
+      continue;
+    }
+    if (rule.const !== undefined && value !== rule.const) errors.push(`${key} must equal ${rule.const}`);
+    if (rule.type === 'string' && typeof value !== 'string') errors.push(`${key} must be a string`);
+    if (rule.type === 'string' && rule.minLength && value.length < rule.minLength) errors.push(`${key} must not be empty`);
+    if (rule.type === 'string' && rule.pattern && !new RegExp(rule.pattern).test(value)) errors.push(`${key} has an invalid format`);
+    if (rule.enum && !rule.enum.includes(value)) errors.push(`${key} must be one of ${rule.enum.join(', ')}`);
+    if (rule.format === 'date') {
+      const date = typeof value === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+      if (!date || new Date(Date.UTC(Number(date[1]), Number(date[2]) - 1, Number(date[3]))).toISOString().slice(0, 10) !== value) {
+        errors.push(`${key} must be a date`);
+      }
+    }
+  }
+  if (errors.length) throw new Error(`Front matter in ${source} does not match schemas/frontmatter.schema.json: ${errors.join('; ')}`);
+}
 
 function parseFrontMatter(markdown, source = 'document') {
   const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown);
@@ -29,9 +55,6 @@ function parseFrontMatter(markdown, source = 'document') {
       }
     }
 
-    if (key === 'revision' && /^(0|[1-9]\d*)$/.test(rawValue)) {
-      value = Number(rawValue);
-    }
     if (typeof value === 'string' && value.length === 0) {
       throw new Error(`Front matter field ${key} in ${source} must be a non-empty string`);
     }
@@ -41,31 +64,7 @@ function parseFrontMatter(markdown, source = 'document') {
     metadata[key] = value;
   }
 
-  for (const field of REQUIRED_FIELDS) {
-    if (!Object.hasOwn(metadata, field)) {
-      throw new Error(`Missing front matter field ${field} in ${source}`);
-    }
-  }
-  if (!SERIES_PATTERN.test(metadata.version)) {
-    throw new Error(`Front matter version in ${source} must be major.minor (X.Y)`);
-  }
-  if (metadata.$schema !== '../schemas/frontmatter.schema.json') {
-    throw new Error(`Front matter $schema in ${source} must link to ../schemas/frontmatter.schema.json`);
-  }
-  if (metadata.status !== 'draft' && metadata.status !== 'final') {
-    throw new Error(`Front matter status in ${source} must be draft or final`);
-  }
-  for (const field of ['date', 'lastmod']) {
-    if (!DATE_PATTERN.test(metadata[field])) {
-      throw new Error(`Front matter ${field} in ${source} must use YYYY-MM-DD`);
-    }
-  }
-  if (!/^\d+$/.test(metadata.javaversion)) {
-    throw new Error(`Front matter javaversion in ${source} must be a Java version number`);
-  }
-  if (!Number.isSafeInteger(metadata.revision) || metadata.revision < 1) {
-    throw new Error(`Front matter revision in ${source} must be a positive integer`);
-  }
+  validateAgainstSchema(metadata, source);
 
   return Object.freeze(metadata);
 }

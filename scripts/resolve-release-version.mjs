@@ -11,12 +11,12 @@ const documentNames = (await readdir(path.join(root, 'documents')))
 const documents = await Promise.all(documentNames.map(async (name) => {
   const file = path.join('documents', name);
   const contents = await readFile(path.join(root, file), 'utf8');
-  return { file, metadata: parseFrontMatter(contents, file) };
+  return { file, name, metadata: parseFrontMatter(contents, file) };
 }));
 const compareVersions = (left, right) => {
-  const [leftMajor, leftMinor] = left.split('.').map(Number);
-  const [rightMajor, rightMinor] = right.split('.').map(Number);
-  return leftMajor - rightMajor || leftMinor - rightMinor;
+  const [leftMajor, leftMinor, leftPatch] = left.split('.').map(Number);
+  const [rightMajor, rightMinor, rightPatch] = right.split('.').map(Number);
+  return leftMajor - rightMajor || leftMinor - rightMinor || leftPatch - rightPatch;
 };
 const finalVersions = documents
   .filter(({ metadata }) => metadata.status === 'final')
@@ -24,37 +24,53 @@ const finalVersions = documents
   .sort(compareVersions);
 if (!finalVersions.length) throw new Error('The documents folder must contain at least one final specification');
 
-const explicit = process.env.INPUT_VERSION?.trim();
+const explicitVersion = process.env.INPUT_VERSION?.trim();
+const inputStatus = process.env.INPUT_STATUS?.trim() ?? '';
 const eventName = process.env.EVENT_NAME;
 const tagName = process.env.TAG_NAME ?? '';
-let specificationIdentity;
-if (explicit) {
-  specificationIdentity = explicit;
-} else if (eventName === 'push') {
-  const tag = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-draft)?)$/.exec(tagName);
-  if (!tag) throw new Error(`Tag ${tagName || '(empty)'} must use vX.Y or vX.Y-draft`);
-  specificationIdentity = tag[1];
+let version;
+let status;
+let revision;
+if (eventName === 'push') {
+  const tag = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-([a-z][a-z0-9-]*))?$/.exec(tagName);
+  if (!tag) throw new Error(`Tag ${tagName || '(empty)'} must use vX.Y.Z with optional -status and -rN suffixes`);
+  version = tag[1];
+  const prerelease = tag[2] ?? '';
+  const finalRevisionMatch = /^r([1-9]\d*)$/.exec(prerelease);
+  const revisionMatch = /^(.*)-r([1-9]\d*)$/.exec(prerelease);
+  status = finalRevisionMatch ? 'final' : (revisionMatch ? revisionMatch[1] : prerelease) || 'final';
+  revision = Number(finalRevisionMatch?.[1] ?? revisionMatch?.[2] ?? 1);
+  if (prerelease === 'final' || revisionMatch?.[1] === 'final') throw new Error('Final releases omit the -final tag suffix');
 } else {
-  specificationIdentity = finalVersions.at(-1);
+  version = explicitVersion || finalVersions.at(-1);
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    throw new Error(`Specification release must use X.Y.Z; received: ${version || '(empty)'}`);
+  }
+  status = !inputStatus || inputStatus === 'final' ? 'final' : inputStatus;
+  if (!/^[a-z][a-z0-9-]*$/.test(status)) throw new Error(`Invalid release status: ${status}`);
+  if (status === 'final') status = 'final';
 }
 
-const identity = /^(0|[1-9]\d*)\.(0|[1-9]\d*)(-draft)?$/.exec(specificationIdentity);
-if (!identity) throw new Error(`Specification release must use X.Y or X.Y-draft; received: ${specificationIdentity || '(empty)'}`);
-const majorMinor = `${identity[1]}.${identity[2]}`;
-const status = identity[3] ? 'draft' : 'final';
-const selected = documents.find(({ metadata }) => metadata.version === majorMinor && metadata.status === status);
-if (!selected) throw new Error(`No ${status} specification document exists for version ${majorMinor}`);
-
-const tag = `v${majorMinor}${status === 'draft' ? '-draft' : ''}`;
-if (eventName === 'push' && tagName !== tag) {
-  throw new Error(`Tag ${tagName} does not match resolved specification version ${majorMinor}${status === 'draft' ? '-draft' : ''}`);
+const selected = documents.find(({ metadata }) => metadata.version === version && metadata.status === status);
+if (!selected) throw new Error(`No ${status} specification document exists for version ${version}`);
+const expectedFile = `v${version}${status === 'final' ? '' : `-${status}`}.md`;
+if (selected.name !== expectedFile) throw new Error(`${selected.file} must be named documents/${expectedFile} for its version and status`);
+const selectedRevision = Number(selected.metadata.revision);
+if (revision !== undefined && selectedRevision !== revision) {
+  throw new Error(`Tag ${tagName} requests revision ${revision}, but ${selected.file} is revision ${selectedRevision}`);
 }
+revision = selectedRevision;
+const suffix = status === 'final' ? '' : `-${status}`;
+const revisionSuffix = revision === 1 ? '' : `-r${revision}`;
+const tag = `v${version}${suffix}${revisionSuffix}`;
+if (eventName === 'push' && tagName !== tag) throw new Error(`Tag ${tagName} does not match resolved specification version ${version}${suffix}${revisionSuffix}`);
 
-// npm requires three numeric components; the Git tag and specification stay X.Y.
-const packageVersion = `${majorMinor}.0${status === 'draft' ? '-draft' : ''}`;
-const pdfVersion = `${majorMinor}${status === 'draft' ? '-draft' : ''}`;
+// Package and document identities share X.Y.Z; status is a prerelease suffix except for final.
+const packageVersion = `${version}${suffix}${revisionSuffix}`;
+const pdfVersion = `${version}${suffix}`;
 console.log(`version=${packageVersion}`);
-console.log(`specification_version=${majorMinor}`);
+console.log(`specification_version=${version}`);
 console.log(`status=${status}`);
+console.log(`revision=${revision}`);
 console.log(`pdf_version=${pdfVersion}`);
 console.log(`tag=${tag}`);

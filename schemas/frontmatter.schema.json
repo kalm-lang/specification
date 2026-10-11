@@ -19,12 +19,20 @@
       "description": "Relative path to this schema from the Markdown document."
     },
     "title": { "type": "string", "minLength": 1 },
-    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
-    "status": { "enum": ["draft", "final"] },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "status": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Use final for a release without a status suffix; every other status is suffixed as -<status>."
+    },
     "date": { "type": "string", "format": "date" },
     "lastmod": { "type": "string", "format": "date" },
     "javaversion": { "type": "string", "pattern": "^[1-9][0-9]*$" },
-    "revision": { "type": "integer", "minimum": 1 }
+    "revision": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Quoted positive integer; revisions above 1 add a -rN release suffix."
+    }
   },
   "additionalProperties": {
     "type": ["string", "number", "boolean", "null"]

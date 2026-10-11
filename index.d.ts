@@ -1,15 +1,14 @@
 export interface SpecificationFrontMatter {
   title: string;
   version: string;
-  status: 'draft' | 'final';
+  status: string;
   date: string;
   lastmod: string;
   javaversion: string;
-  revision: number;
+  revision: string;
   [key: string]: string | number | boolean | null;
 }
 export interface SpecificationMetadata extends SpecificationFrontMatter {
-  majorMinor: string;
   specificationVersion: string;
 }
 export interface SpecificationRecord {

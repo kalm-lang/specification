@@ -3,14 +3,18 @@ name: Release specification
 on:
   push:
     tags:
-      - 'v*.*'
-      - '!v*.*.*'
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional specification version: X.Y for final or X.Y-draft for draft. Empty uses the latest final version.'
+        description: 'Optional specification version in X.Y.Z format. Empty uses the latest final version.'
         required: false
         type: string
+      status:
+        description: 'Release status (empty or final omits a suffix; other values use -<status>).'
+        required: false
+        type: string
+        default: 'final'
 
 permissions:
   contents: write
@@ -48,6 +52,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_VERSION: ${{ inputs.version }}
+          INPUT_STATUS: ${{ inputs.status }}
           TAG_NAME: ${{ github.ref_name }}
         run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
 
@@ -169,9 +174,13 @@ jobs:
           PDF_ASSETS=()
           RELEASE_FLAGS=()
           SPECIFICATION_SUFFIX=""
-          if [ "$SPECIFICATION_STATUS" = "draft" ]; then
+          REVISION_SUFFIX=""
+          if [ "$SPECIFICATION_STATUS" != "final" ]; then
             RELEASE_FLAGS+=(--prerelease)
-            SPECIFICATION_SUFFIX="-draft"
+            SPECIFICATION_SUFFIX="-$SPECIFICATION_STATUS"
+          fi
+          if [ "$SPECIFICATION_REVISION" -gt 1 ]; then
+            REVISION_SUFFIX="-r$SPECIFICATION_REVISION"
           fi
           for theme in light dark print; do
             PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
@@ -215,7 +224,7 @@ jobs:
             "$SPEC_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · Markdown" \
             "${PDF_ASSETS[@]}" \
             --verify-tag \
-            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}" \
+            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}${REVISION_SUFFIX}" \
             --notes "$NOTES" \
             --generate-notes \
             "${RELEASE_FLAGS[@]}"

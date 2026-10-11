@@ -12,28 +12,32 @@ const records = await Promise.all(files.map(async (name) => {
   const file = `documents/${name}`;
   const markdown = await readFile(path.join(root, file), 'utf8');
   const metadata = parseFrontMatter(markdown, file);
+  const expectedName = `v${metadata.version}${metadata.status === 'final' ? '' : `-${metadata.status}`}.md`;
+  if (name !== expectedName) throw new Error(`${file} must be named documents/${expectedName} for its version and status`);
   return { file, markdown, metadata };
 }));
 const compare = (left, right) => {
-  const [leftMajor, leftMinor] = left.split('.').map(Number);
-  const [rightMajor, rightMinor] = right.split('.').map(Number);
-  return leftMajor - rightMajor || leftMinor - rightMinor;
+  const [leftMajor, leftMinor, leftPatch] = left.split('.').map(Number);
+  const [rightMajor, rightMinor, rightPatch] = right.split('.').map(Number);
+  return leftMajor - rightMajor || leftMinor - rightMinor || leftPatch - rightPatch;
 };
 const latestVersion = records
   .filter(({ metadata }) => metadata.status === 'final')
-  .map(({ metadata }) => metadata.version)
-  .sort(compare)
+  .sort((left, right) => compare(left.metadata.version, right.metadata.version)
+    || Number(left.metadata.revision) - Number(right.metadata.revision))
   .at(-1);
 if (!latestVersion) throw new Error('No final specification document found');
 
-const api = { latestVersion, versions: {}, drafts: {} };
+const identityFor = (metadata) => `${metadata.version}${metadata.status === 'final' ? '' : `-${metadata.status}`}${Number(metadata.revision) > 1 ? `-r${metadata.revision}` : ''}`;
+const api = { latestVersion: identityFor(latestVersion.metadata), versions: {}, drafts: {} };
 for (const { file, markdown, metadata } of records) {
-  const bucket = metadata.status === 'draft' ? api.drafts : api.versions;
-  bucket[metadata.version] = {
+  const bucket = metadata.status === 'final' ? api.versions : api.drafts;
+  const identity = identityFor(metadata);
+  const specificationVersion = identity;
+  bucket[identity] = {
     file,
-    specificationVersion: metadata.status === 'draft' ? `${metadata.version}-draft` : metadata.version,
-    metadata: { ...metadata, majorMinor: metadata.version,
-      specificationVersion: metadata.status === 'draft' ? `${metadata.version}-draft` : metadata.version },
+    specificationVersion,
+    metadata: { ...metadata, specificationVersion },
     markdown,
   };
 }
@@ -51,15 +55,14 @@ await Promise.all([
     'export interface SpecificationFrontMatter {',
     '  title: string;',
     '  version: string;',
-    "  status: 'draft' | 'final';",
+    '  status: string;',
     '  date: string;',
     '  lastmod: string;',
     '  javaversion: string;',
-    '  revision: number;',
+    '  revision: string;',
     '  [key: string]: string | number | boolean | null;',
     '}',
     'export interface SpecificationMetadata extends SpecificationFrontMatter {',
-    '  majorMinor: string;',
     '  specificationVersion: string;',
     '}',
     'export interface SpecificationRecord {',

@@ -33,13 +33,13 @@ function parseArguments(args) {
     else if (args[index] === '--theme') options.theme = args[++index] ?? '';
     else if (args[index] === '--version') {
       options.version = args[++index] ?? '';
-      if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y, X.Y-draft, or X.Y.Z value');
+      if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y.Z value, optionally followed by -status');
     } else if (args[index] === '--all') options.all = true;
     else throw new Error(`Unknown option: ${args[index]}`);
   }
   if (options.all && options.version) throw new Error('Use either --all or --version, not both');
-  if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-draft)?$/.test(options.version)) {
-    throw new Error(`Unsupported specification version ${options.version}; use X.Y, X.Y-draft, or X.Y.Z`);
+  if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?!final$)[a-z][a-z0-9-]*)?$/.test(options.version)) {
+    throw new Error(`Unsupported specification version ${options.version}; use X.Y.Z with an optional -status suffix`);
   }
   if (options.theme !== 'all' && !themes.includes(options.theme)) {
     throw new Error(`Unsupported theme ${options.theme}; choose all, light, dark, or print`);
@@ -48,9 +48,9 @@ function parseArguments(args) {
 }
 
 function compareVersions(left, right) {
-  const [leftMajor, leftMinor] = left.split('.').map(Number);
-  const [rightMajor, rightMinor] = right.split('.').map(Number);
-  return leftMajor - rightMajor || leftMinor - rightMinor;
+  const [leftMajor, leftMinor, leftPatch] = left.split('.').map(Number);
+  const [rightMajor, rightMinor, rightPatch] = right.split('.').map(Number);
+  return leftMajor - rightMajor || leftMinor - rightMinor || leftPatch - rightPatch;
 }
 
 function headingSlug(line) {
@@ -653,14 +653,12 @@ async function main() {
   const latestFinalVersion = documents.filter(({ metadata }) => metadata.status === 'final')
     .map(({ metadata }) => metadata.version).sort(compareVersions).at(-1);
   if (!options.all && !latestFinalVersion) throw new Error('No final specification version found');
-  const normalizedVersion = options.version?.replace(/-draft$/, '');
-  const targetVersion = normalizedVersion?.split('.').slice(0, 2).join('.') ?? latestFinalVersion;
-  const finalOnly = !options.version || options.version.split('.').length === 3 || options.version.endsWith('-draft');
-  const targetStatus = options.version?.endsWith('-draft') ? 'draft' : 'final';
+  const [targetVersion, targetStatus] = options.version?.split(/-(.*)/s) ?? [];
+  const selectedVersion = targetVersion ?? latestFinalVersion;
   const selected = options.all ? documents : documents.filter(({ metadata }) => (
-    metadata.version === targetVersion && (!finalOnly || metadata.status === targetStatus)
+    metadata.version === selectedVersion && (!options.version || metadata.status === (targetStatus ?? 'final'))
   ));
-  if (!selected.length) throw new Error(`No specification documents found for version ${targetVersion}`);
+  if (!selected.length) throw new Error(`No specification documents found for version ${selectedVersion}${targetStatus ? `-${targetStatus}` : ''}`);
   await mkdir(options.outputDir, { recursive: true });
   const selectedThemes = options.theme === 'all' ? themes : [options.theme];
   for (const { source } of selected) {
@@ -670,7 +668,7 @@ async function main() {
       console.log(`Generated ${path.relative(root, outputPath)}`);
     }
   }
-  console.log(`Generated ${selected.length * selectedThemes.length} PDFs for ${options.all ? 'all specification versions' : `version ${targetVersion}`} in ${options.outputDir}`);
+  console.log(`Generated ${selected.length * selectedThemes.length} PDFs for ${options.all ? 'all specification versions' : `version ${selectedVersion}`} in ${options.outputDir}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

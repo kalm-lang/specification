@@ -7,22 +7,24 @@ publishes them as `@kalm-lang/specification` to GitHub Packages.
 
 The Markdown files in [`documents/`](documents/) are the source of truth. Build
 scripts discover every `*.md` file in that folder; no separate document map is
-maintained. Each file starts with YAML front matter validated by
+maintained. Each file starts with YAML front matter validated against
 [`schemas/frontmatter.schema.json`](schemas/frontmatter.schema.json). The
-front matter is also exported in the JavaScript API. `revision` is a positive
-integer that counts edits to that specification version.
+front matter is also exported in the JavaScript API. `revision` is a quoted
+positive integer, normally `1`, and is incremented when the same version and
+status must be re-released. Revisions above `1` add `-rN` to the release tag
+and package version, such as `v1.1.0-r2` for revision `2` of a final release.
 
 The visible Markdown heading and concise edition details follow the front
 matter. The `[main]` reference points to the first section included in generated
 PDFs, allowing PDFs to use the metadata for their cover without repeating the
 Markdown preface.
 
-Documents use `X.Y` major/minor version identities and filenames such as
-`v1.1.md` or `v1.1-draft.md`. Final and draft Git tags use `vX.Y` and
-`vX.Y-draft`. Published npm packages use the required `X.Y.Z` SemVer format:
+Documents use `X.Y.Z` version identities and filenames such as `v1.1.0.md` or
+`v1.1.0-draft.md`. Final releases omit a status suffix; other statuses use
+`-<status>` in filenames, Git tags, and package versions:
 
-- `@kalm-lang/specification@1.1.0` contains the final `1.1` document.
-- `@kalm-lang/specification@1.1.0-draft` contains the `1.1` draft document.
+- `@kalm-lang/specification@1.1.0` contains the final `1.1.0` document.
+- `@kalm-lang/specification@1.1.0-draft` contains the `1.1.0` draft document.
 - `@kalm-lang/specification@1.1.0-full` contains all documents, including
   historical drafts.
 
@@ -51,9 +53,9 @@ there are no runtime document lookup functions or file reads.
 ```js
 import { drafts, latestVersion, versions } from '@kalm-lang/specification';
 
-const markdown = versions['1.1'].markdown;
-const metadata = versions['1.1'].metadata;
-const latestDraft = drafts['1.1'];
+const markdown = versions['1.1.0'].markdown;
+const metadata = versions['1.1.0'].metadata;
+const latestDraft = drafts['1.1.0-draft'];
 
 console.log(latestVersion, metadata.revision, latestDraft?.metadata.status);
 ```
@@ -62,8 +64,8 @@ Each document is also available as a static ESM module. It exports the Markdown
 as its default value and its front matter as `metadata`:
 
 ```js
-import specification, { metadata } from '@kalm-lang/specification/versions/1.1';
-import draft from '@kalm-lang/specification/drafts/1.1';
+import specification, { metadata } from '@kalm-lang/specification/versions/1.1.0';
+import draft from '@kalm-lang/specification/drafts/1.1.0-draft';
 
 console.log(specification, metadata.javaversion, draft);
 ```
@@ -81,10 +83,9 @@ npm run build:pdfs
 ```
 
 By default, the build selects the latest final specification version and
-generates its three theme PDFs. Select a target series with
-`npm run build:pdfs -- --version 1.1` to generate all documents in that series
-(draft and final where present), or pass `1.1-draft` to generate just its draft.
-Package SemVer such as `1.1.0` generates only the final document. Use
+generates its three theme PDFs. Select a document with
+`npm run build:pdfs -- --version 1.1.0` for its final version, or pass
+`1.1.0-draft` (or another status suffix) to generate that status. Use
 `npm run build:pdfs -- --all` to generate every version.
 
 Choose one theme with `npm run build:pdfs -- --theme print` (also accepts
@@ -104,16 +105,17 @@ Run the layout and pagination regression checks with `npm run test:pdfs`.
 
 ## Releasing
 
-Push a `vX.Y` tag for a final specification or `vX.Y-draft` for a draft, or
-start **Release specification** with `workflow_dispatch`. Enter `X.Y` or
-`X.Y-draft` for a specific version; an empty value selects the latest final
-version. The workflow validates the tag against front matter and stops when the
-GitHub release or npm package version already exists.
+Push a `vX.Y.Z` tag for a final specification or `vX.Y.Z-<status>` for another
+status, or start **Release specification** with `workflow_dispatch`. Enter an
+X.Y.Z version and choose a status; empty or `final` omits the suffix. An empty
+version selects the latest final version. The workflow validates the tag and
+status against front matter and stops when the GitHub release or npm package
+version already exists.
 
 The workflow generates all three PDF themes for the release's target version,
 prepares focused and historical Markdown packages, and attaches the matching
 Markdown and PDFs to the GitHub release. Both packages include the PDFs for
 that release; the historical package retains Markdown and static APIs for every
 specification version.
-Git tags and specification identities use `X.Y`; npm package versions use
-`X.Y.0` SemVer (with `-draft` for draft packages).
+Git tags, specification identities, and npm package versions use `X.Y.Z`, with
+`-<status>` for non-final releases.

@@ -37,7 +37,7 @@ test('pagination protects section starts and safely splits long blocks', async (
   try {
     const fixture = [
       ['---', "$schema: '../schemas/frontmatter.schema.json'", "title: 'Kalm Language Specification'",
-        "version: '1.1'", "status: 'draft'", "date: '2026-10-11'", "lastmod: '2026-10-11'", "javaversion: '25'", 'revision: 1', '---'].join('\n'),
+        "version: '1.1.0'", "status: 'draft'", "date: '2026-10-11'", "lastmod: '2026-10-11'", "javaversion: '25'", "revision: '1'", '---'].join('\n'),
       '[main]: #intro', '## Intro',
       Array.from({ length: 43 }, (_, i) => `Explicit paragraph line ${i + 1}.  `).join('\n'),
       '## Boundary heading', '### Adjacent subheading', 'A short introduction to this example:',
@@ -75,7 +75,7 @@ test('bounded reflow removes a sparse final page without discarding text', async
   await mkdir(path.join(root, 'tmp'), { recursive: true });
   const temp = await mkdtemp(path.join(root, 'tmp', 'pdf-reflow-'));
   try {
-    const frontMatter = (await readFile(path.join(root, 'documents', 'v1.1.md'), 'utf8')).match(/^---[\s\S]*?\n---/)[0];
+    const frontMatter = (await readFile(path.join(root, 'documents', 'v1.1.0.md'), 'utf8')).match(/^---[\s\S]*?\n---/)[0];
     const source = path.join(temp, 'reflow.md');
     await writeFile(source, [frontMatter, '[main]: #intro', '## Intro',
       Array.from({ length: 42 }, (_, i) => `Explicit paragraph line ${i + 1}.  `).join('\n'),
