@@ -6,6 +6,7 @@ Markdown files in [documents/](documents/) are the source of truth. JavaScript p
 ## Folder overview
 
 - [`documents/`](documents/): source Markdown editions.
+- [`changes/`](changes/): edition comparisons, breaking changes, and migration guidance.
 - [`schemas/`](schemas/): JSON schemas.
 - [`scripts/`](scripts/): PDF generation and release tooling.
 - [`templates/`](templates/): shared PDF layout templates.
