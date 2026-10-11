@@ -13,52 +13,48 @@ const documents = await Promise.all(documentNames.map(async (name) => {
   const contents = await readFile(path.join(root, file), 'utf8');
   return { file, metadata: parseFrontMatter(contents, file) };
 }));
+const compareVersions = (left, right) => {
+  const [leftMajor, leftMinor] = left.split('.').map(Number);
+  const [rightMajor, rightMinor] = right.split('.').map(Number);
+  return leftMajor - rightMajor || leftMinor - rightMinor;
+};
 const finalVersions = documents
   .filter(({ metadata }) => metadata.status === 'final')
   .map(({ metadata }) => metadata.version)
-  .sort((left, right) => {
-    const [leftMajor, leftMinor] = left.split('.').map(Number);
-    const [rightMajor, rightMinor] = right.split('.').map(Number);
-    return leftMajor - rightMajor || leftMinor - rightMinor;
-  });
-if (finalVersions.length === 0) {
-  throw new Error('The documents folder must contain at least one final specification');
-}
-const latestSeries = finalVersions.at(-1);
+  .sort(compareVersions);
+if (!finalVersions.length) throw new Error('The documents folder must contain at least one final specification');
+
 const explicit = process.env.INPUT_VERSION?.trim();
 const eventName = process.env.EVENT_NAME;
 const tagName = process.env.TAG_NAME ?? '';
-let version;
-
+let specificationIdentity;
 if (explicit) {
-  version = explicit.replace(/^v/, '');
+  specificationIdentity = explicit;
 } else if (eventName === 'push') {
-  version = tagName.replace(/^v/, '');
+  const tag = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-draft)?)$/.exec(tagName);
+  if (!tag) throw new Error(`Tag ${tagName || '(empty)'} must use vX.Y or vX.Y-draft`);
+  specificationIdentity = tag[1];
 } else {
-  version = process.env.GITVERSION_VERSION ?? '';
-  const calculatedVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.exec(version);
-  if (calculatedVersion) {
-    const calculatedSeries = `${calculatedVersion[1]}.${calculatedVersion[2]}`;
-    version = calculatedSeries === latestSeries
-      ? `${calculatedSeries}.${calculatedVersion[3]}`
-      : `${latestSeries}.0`;
-  }
+  specificationIdentity = finalVersions.at(-1);
 }
 
-if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
-  throw new Error(`Release version must be plain SemVer (x.y.z); received: ${version || '(empty)'}`);
+const identity = /^(0|[1-9]\d*)\.(0|[1-9]\d*)(-draft)?$/.exec(specificationIdentity);
+if (!identity) throw new Error(`Specification release must use X.Y or X.Y-draft; received: ${specificationIdentity || '(empty)'}`);
+const majorMinor = `${identity[1]}.${identity[2]}`;
+const status = identity[3] ? 'draft' : 'final';
+const selected = documents.find(({ metadata }) => metadata.version === majorMinor && metadata.status === status);
+if (!selected) throw new Error(`No ${status} specification document exists for version ${majorMinor}`);
+
+const tag = `v${majorMinor}${status === 'draft' ? '-draft' : ''}`;
+if (eventName === 'push' && tagName !== tag) {
+  throw new Error(`Tag ${tagName} does not match resolved specification version ${majorMinor}${status === 'draft' ? '-draft' : ''}`);
 }
 
-const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
-const majorMinor = versionMatch ? `${versionMatch[1]}.${versionMatch[2]}` : '';
-
-if (!documents.some(({ metadata }) => metadata.version === majorMinor && metadata.status === 'final')) {
-  throw new Error(`No final specification document exists for release series ${majorMinor || version}`);
-}
-
-if (eventName === 'push' && tagName !== `v${version}`) {
-  throw new Error(`Tag ${tagName} does not match resolved version ${version}`);
-}
-
-console.log(`version=${version}`);
-console.log(`tag=v${version}`);
+// npm requires three numeric components; the Git tag and specification stay X.Y.
+const packageVersion = `${majorMinor}.0${status === 'draft' ? '-draft' : ''}`;
+const pdfVersion = `${majorMinor}${status === 'draft' ? '-draft' : ''}`;
+console.log(`version=${packageVersion}`);
+console.log(`specification_version=${majorMinor}`);
+console.log(`status=${status}`);
+console.log(`pdf_version=${pdfVersion}`);
+console.log(`tag=${tag}`);

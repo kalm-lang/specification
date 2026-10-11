@@ -33,13 +33,13 @@ function parseArguments(args) {
     else if (args[index] === '--theme') options.theme = args[++index] ?? '';
     else if (args[index] === '--version') {
       options.version = args[++index] ?? '';
-      if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y or X.Y.Z value');
+      if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y, X.Y-draft, or X.Y.Z value');
     } else if (args[index] === '--all') options.all = true;
     else throw new Error(`Unknown option: ${args[index]}`);
   }
   if (options.all && options.version) throw new Error('Use either --all or --version, not both');
-  if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$/.test(options.version)) {
-    throw new Error(`Unsupported specification version ${options.version}; use X.Y or X.Y.Z`);
+  if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:-draft)?$/.test(options.version)) {
+    throw new Error(`Unsupported specification version ${options.version}; use X.Y, X.Y-draft, or X.Y.Z`);
   }
   if (options.theme !== 'all' && !themes.includes(options.theme)) {
     throw new Error(`Unsupported theme ${options.theme}; choose all, light, dark, or print`);
@@ -653,10 +653,12 @@ async function main() {
   const latestFinalVersion = documents.filter(({ metadata }) => metadata.status === 'final')
     .map(({ metadata }) => metadata.version).sort(compareVersions).at(-1);
   if (!options.all && !latestFinalVersion) throw new Error('No final specification version found');
-  const targetVersion = options.version?.split('.').slice(0, 2).join('.') ?? latestFinalVersion;
-  const finalOnly = !options.version || options.version.split('.').length === 3;
+  const normalizedVersion = options.version?.replace(/-draft$/, '');
+  const targetVersion = normalizedVersion?.split('.').slice(0, 2).join('.') ?? latestFinalVersion;
+  const finalOnly = !options.version || options.version.split('.').length === 3 || options.version.endsWith('-draft');
+  const targetStatus = options.version?.endsWith('-draft') ? 'draft' : 'final';
   const selected = options.all ? documents : documents.filter(({ metadata }) => (
-    metadata.version === targetVersion && (!finalOnly || metadata.status === 'final')
+    metadata.version === targetVersion && (!finalOnly || metadata.status === targetStatus)
   ));
   if (!selected.length) throw new Error(`No specification documents found for version ${targetVersion}`);
   await mkdir(options.outputDir, { recursive: true });

@@ -31,10 +31,11 @@ if (!latestVersion) throw new Error('The documents folder must contain at least 
 
 const basePackage = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const version = process.env.RELEASE_VERSION;
-const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version ?? '');
+const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-draft)?$/.exec(version ?? '');
 const majorMinor = versionMatch ? `${versionMatch[1]}.${versionMatch[2]}` : '';
-const selected = documents.find((entry) => entry.version === majorMinor && entry.status === 'final');
-if (!selected) throw new Error(`No final specification document exists for release version ${version ?? '(empty)'}`);
+const selectedStatus = versionMatch?.[4] ? 'draft' : 'final';
+const selected = documents.find((entry) => entry.version === majorMinor && entry.status === selectedStatus);
+if (!selected) throw new Error(`No ${selectedStatus} specification document exists for release version ${version ?? '(empty)'}`);
 
 function enrichedMetadata(entry) {
   return {
@@ -83,7 +84,9 @@ async function writeStaticModule(output, directory, entry) {
 }
 
 function rootApi(entries) {
-  const api = { latestVersion, versions: {}, drafts: {} };
+  const availableFinalVersions = entries.filter((entry) => entry.status === 'final')
+    .map((entry) => entry.version).sort(compareVersions);
+  const api = { latestVersion: availableFinalVersions.at(-1) ?? null, versions: {}, drafts: {} };
   for (const entry of entries) {
     const bucket = entry.status === 'draft' ? api.drafts : api.versions;
     bucket[entry.version] = {
@@ -128,7 +131,7 @@ async function writeRootApi(output, entries) {
       '  metadata: Readonly<SpecificationMetadata>;',
       '  markdown: string;',
       '}',
-      'export declare const latestVersion: string;',
+      'export declare const latestVersion: string | null;',
       'export declare const versions: Readonly<Record<string, SpecificationRecord>>;',
       'export declare const drafts: Readonly<Record<string, SpecificationRecord>>;',
       '',

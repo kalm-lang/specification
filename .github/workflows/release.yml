@@ -3,11 +3,12 @@ name: Release specification
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*'
+      - '!v*.*.*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional final specification SemVer version (for example 1.1.0). Empty uses GitVersion.'
+        description: 'Optional specification version: X.Y for final or X.Y-draft for draft. Empty uses the latest final version.'
         required: false
         type: string
 
@@ -42,30 +43,18 @@ jobs:
       - name: Check PDF layout and pagination
         run: npm run test:pdfs
 
-      - name: Install GitVersion
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
-        uses: GitTools/actions/gitversion/setup@v4.7.0
-        with:
-          versionSpec: '6.8.x'
-
-      - name: Calculate a version with GitVersion
-        id: gitversion
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
-        uses: GitTools/actions/gitversion/execute@v4.7.0
-
       - name: Resolve and validate release version
         id: release
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_VERSION: ${{ inputs.version }}
           TAG_NAME: ${{ github.ref_name }}
-          GITVERSION_VERSION: ${{ steps.gitversion.outputs.majorMinorPatch }}
         run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
 
       - name: Generate release-version PDFs
         env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: npm run build:pdfs -- --version "$RELEASE_VERSION"
+          PDF_VERSION: ${{ steps.release.outputs.pdf_version }}
+        run: npm run build:pdfs -- --version "$PDF_VERSION"
 
       - name: Reject an existing release or tag
         env:
@@ -134,6 +123,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SPECIFICATION_VERSION: ${{ steps.release.outputs.specification_version }}
+          SPECIFICATION_STATUS: ${{ steps.release.outputs.status }}
         run: |
           mapfile -t SPEC_FILES < <(find .release-packages/versioned/documents -maxdepth 1 -type f -name '*.md' -print)
           if [ "${#SPEC_FILES[@]}" -ne 1 ]; then
@@ -176,6 +167,12 @@ jobs:
           SPEC_BASENAME="${SPEC_FILENAME%.md}"
           METADATA_LABEL="${SPECIFICATION_VERSION} · ${SPECIFICATION_STATUS^} · ${SPECIFICATION_DATE} · Java ${SPECIFICATION_JAVA_VERSION} · Revision ${SPECIFICATION_REVISION}"
           PDF_ASSETS=()
+          RELEASE_FLAGS=()
+          SPECIFICATION_SUFFIX=""
+          if [ "$SPECIFICATION_STATUS" = "draft" ]; then
+            RELEASE_FLAGS+=(--prerelease)
+            SPECIFICATION_SUFFIX="-draft"
+          fi
           for theme in light dark print; do
             PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
             if [ ! -f "$PDF_FILE" ]; then
@@ -218,6 +215,7 @@ jobs:
             "$SPEC_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · Markdown" \
             "${PDF_ASSETS[@]}" \
             --verify-tag \
-            --title "${SPECIFICATION_TITLE} ${RELEASE_VERSION}" \
+            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}" \
             --notes "$NOTES" \
-            --generate-notes
+            --generate-notes \
+            "${RELEASE_FLAGS[@]}"

@@ -18,10 +18,11 @@ PDFs, allowing PDFs to use the metadata for their cover without repeating the
 Markdown preface.
 
 Documents use `X.Y` major/minor version identities and filenames such as
-`v1.1.md` or `v1.1-draft.md`. Published npm packages use the required `X.Y.Z`
-SemVer format:
+`v1.1.md` or `v1.1-draft.md`. Final and draft Git tags use `vX.Y` and
+`vX.Y-draft`. Published npm packages use the required `X.Y.Z` SemVer format:
 
 - `@kalm-lang/specification@1.1.0` contains the final `1.1` document.
+- `@kalm-lang/specification@1.1.0-draft` contains the `1.1` draft document.
 - `@kalm-lang/specification@1.1.0-full` contains all documents, including
   historical drafts.
 
@@ -82,9 +83,9 @@ npm run build:pdfs
 By default, the build selects the latest final specification version and
 generates its three theme PDFs. Select a target series with
 `npm run build:pdfs -- --version 1.1` to generate all documents in that series
-(draft and final where present),
-or pass package SemVer such as `1.1.0` to generate only that final version.
-Use `npm run build:pdfs -- --all` to generate every version.
+(draft and final where present), or pass `1.1-draft` to generate just its draft.
+Package SemVer such as `1.1.0` generates only the final document. Use
+`npm run build:pdfs -- --all` to generate every version.
 
 Choose one theme with `npm run build:pdfs -- --theme print` (also accepts
 `light` or `dark`). Outputs are named `<document>-<theme>.pdf` in `output/pdf/`.
@@ -103,16 +104,16 @@ Run the layout and pagination regression checks with `npm run test:pdfs`.
 
 ## Releasing
 
-Push a `vX.Y.Z` tag to release a final specification version, or start **Release
-specification** with `workflow_dispatch`. An empty manual version uses
-GitVersion's next patch when it matches the latest final series; otherwise it
-starts at patch zero for that series. The workflow validates the release
-against front matter and stops when the GitHub release or tag already exists.
+Push a `vX.Y` tag for a final specification or `vX.Y-draft` for a draft, or
+start **Release specification** with `workflow_dispatch`. Enter `X.Y` or
+`X.Y-draft` for a specific version; an empty value selects the latest final
+version. The workflow validates the tag against front matter and stops when the
+GitHub release or npm package version already exists.
 
 The workflow generates all three PDF themes for the release's target version,
 prepares focused and historical Markdown packages, and attaches the matching
 Markdown and PDFs to the GitHub release. Both packages include the PDFs for
 that release; the historical package retains Markdown and static APIs for every
 specification version.
-Package releases use plain `X.Y.Z` SemVer; specification identities and import
-paths use `X.Y`.
+Git tags and specification identities use `X.Y`; npm package versions use
+`X.Y.0` SemVer (with `-draft` for draft packages).
