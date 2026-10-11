@@ -27,7 +27,7 @@ const CODE_LABEL_HEIGHT = 19;
 const CODE_PADDING = 10;
 
 function parseArguments(args) {
-  const options = { outputDir: path.join(root, 'output', 'pdf'), theme: 'all', all: false };
+  const options = { outputDir: path.join(root, 'generated', 'pdf'), theme: 'all', all: false };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === '--output-dir') options.outputDir = path.resolve(args[++index] ?? '');
     else if (args[index] === '--theme') options.theme = args[++index] ?? '';

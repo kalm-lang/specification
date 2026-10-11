@@ -1,9 +1,10 @@
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import frontMatter from '../frontmatter.cjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const output = path.join(root, 'generated', 'package-api');
 const { parseFrontMatter } = frontMatter;
 const files = (await readdir(path.join(root, 'documents')))
   .filter((file) => file.endsWith('.md'))
@@ -41,16 +42,17 @@ for (const { file, markdown, metadata } of records) {
   };
 }
 
+await mkdir(output, { recursive: true });
 await Promise.all([
-  writeFile(path.join(root, 'index.cjs'), `'use strict';\n\nmodule.exports = ${JSON.stringify(api, null, 2)};\n`),
-  writeFile(path.join(root, 'index.mjs'), [
+  writeFile(path.join(output, 'index.cjs'), `'use strict';\n\nmodule.exports = ${JSON.stringify(api, null, 2)};\n`),
+  writeFile(path.join(output, 'index.mjs'), [
     "import specification from './index.cjs';",
     'export const latestVersion = specification.latestVersion;',
     'export const versions = specification.versions;',
     'export const drafts = specification.drafts;',
     '',
   ].join('\n')),
-  writeFile(path.join(root, 'index.d.ts'), [
+  writeFile(path.join(output, 'index.d.ts'), [
     'export interface SpecificationFrontMatter {',
     '  title: string;',
     '  version: string;',

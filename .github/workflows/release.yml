@@ -121,13 +121,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: npm publish ".release-packages/versioned" --registry=https://npm.pkg.github.com
+        run: npm publish "generated/release-packages/versioned" --registry=https://npm.pkg.github.com
 
       - name: Publish historical specification package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: npm publish ".release-packages/full" --registry=https://npm.pkg.github.com
+        run: npm publish "generated/release-packages/full" --registry=https://npm.pkg.github.com
 
       - name: Create tag for a manually started release
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -147,12 +147,12 @@ jobs:
           SPECIFICATION_VERSION: ${{ steps.release.outputs.specification_version }}
           SPECIFICATION_STATUS: ${{ steps.release.outputs.status }}
         run: |
-          mapfile -t SPEC_FILES < <(find .release-packages/versioned/documents -maxdepth 1 -type f -name '*.md' -print)
+          mapfile -t SPEC_FILES < <(find generated/release-packages/versioned/documents -maxdepth 1 -type f -name '*.md' -print)
           if [ "${#SPEC_FILES[@]}" -ne 1 ]; then
             echo "Expected exactly one version-matched specification Markdown file; found ${#SPEC_FILES[@]}" >&2
             exit 1
           fi
-          mapfile -t PDF_FILES < <(find .release-packages/versioned/pdf -maxdepth 1 -type f -name '*.pdf' -print)
+          mapfile -t PDF_FILES < <(find generated/release-packages/versioned/generated/pdf -maxdepth 1 -type f -name '*.pdf' -print)
           if [ "${#PDF_FILES[@]}" -ne 3 ]; then
             echo "Expected one light, dark, and print specification PDF; found ${#PDF_FILES[@]}" >&2
             exit 1
@@ -192,7 +192,7 @@ jobs:
             SPECIFICATION_SUFFIX="-$SPECIFICATION_STATUS"
           fi
           for theme in light dark print; do
-            PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
+            PDF_FILE="generated/release-packages/versioned/generated/pdf/${SPEC_BASENAME}-${theme}.pdf"
             if [ ! -f "$PDF_FILE" ]; then
               echo "Missing ${theme} specification PDF: $PDF_FILE" >&2
               exit 1

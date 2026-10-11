@@ -101,16 +101,18 @@ function rootApi(entries) {
 
 async function writeRootApi(output, entries) {
   const serialized = JSON.stringify(rootApi(entries), null, 2);
+  const apiDirectory = path.join(output, 'generated', 'package-api');
+  await mkdir(apiDirectory, { recursive: true });
   await Promise.all([
-    writeFile(path.join(output, 'index.cjs'), `'use strict';\n\nmodule.exports = ${serialized};\n`),
-    writeFile(path.join(output, 'index.mjs'), [
+    writeFile(path.join(apiDirectory, 'index.cjs'), `'use strict';\n\nmodule.exports = ${serialized};\n`),
+    writeFile(path.join(apiDirectory, 'index.mjs'), [
       "import specification from './index.cjs';",
       'export const latestVersion = specification.latestVersion;',
       'export const versions = specification.versions;',
       'export const drafts = specification.drafts;',
       '',
     ].join('\n')),
-    writeFile(path.join(output, 'index.d.ts'), [
+    writeFile(path.join(apiDirectory, 'index.d.ts'), [
       'export interface SpecificationFrontMatter {',
       '  title: string;',
       '  version: string;',
@@ -139,7 +141,7 @@ async function writeRootApi(output, entries) {
 
 const outputRoot = process.env.PACKAGE_OUTPUT_DIR
   ? path.resolve(process.env.PACKAGE_OUTPUT_DIR)
-  : path.join(root, '.release-packages');
+  : path.join(root, 'generated', 'release-packages');
 await rm(outputRoot, { recursive: true, force: true });
 
 for (const variant of ['versioned', 'full']) {
@@ -147,17 +149,17 @@ for (const variant of ['versioned', 'full']) {
   const output = path.join(outputRoot, variant);
   await mkdir(path.join(output, 'documents'), { recursive: true });
   await mkdir(path.join(output, 'schemas'), { recursive: true });
-  await mkdir(path.join(output, 'pdf'), { recursive: true });
+  await mkdir(path.join(output, 'generated', 'pdf'), { recursive: true });
 
   for (const entry of entries) {
     await cp(path.join(root, entry.file), path.join(output, entry.file));
-    await writeStaticModule(output, entry.status === 'final' ? 'versions' : 'drafts', entry);
+    await writeStaticModule(output, path.join('generated', entry.status === 'final' ? 'versions' : 'drafts'), entry);
   }
   // Both package variants carry the PDFs for this release's selected final document.
   const selectedDocumentName = path.parse(selected.file).name;
   for (const theme of pdfThemes) {
     const pdfName = `${selectedDocumentName}-${theme}.pdf`;
-    await cp(path.join(root, 'output', 'pdf', pdfName), path.join(output, 'pdf', pdfName));
+    await cp(path.join(root, 'generated', 'pdf', pdfName), path.join(output, 'generated', 'pdf', pdfName));
   }
 
   const packageJson = {

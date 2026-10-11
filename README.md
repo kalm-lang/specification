@@ -10,6 +10,7 @@ Markdown files in [documents/](documents/) are the source of truth. JavaScript p
 - [`schemas/`](schemas/): JSON schemas.
 - [`scripts/`](scripts/): PDF generation and release tooling.
 - [`templates/`](templates/): shared PDF layout templates.
+- [`generated/`](generated/): generated package API, edition modules, PDFs, and release bundles.
 
 ## Versions and status
 
@@ -90,7 +91,7 @@ npm run build:pdfs
 
 Use `npm run build:pdfs -- --version 1.1.0-draft` to select another edition,
 `--theme print` to build one theme, or `--all` to build every edition. PDFs are
-written to [`output/pdf/`](output/pdf/).
+written to [`generated/pdf/`](generated/pdf/).
 
 ## Release
 
@@ -103,5 +104,6 @@ builds its PDFs, publishes a focused package and a historical bundle, and
 attaches the Markdown and PDFs to a GitHub release.
 
 At the repository root, [`frontmatter.cjs`](frontmatter.cjs) parses and validates
-document metadata. [`index.cjs`](index.cjs), [`index.mjs`](index.mjs), and
-[`index.d.ts`](index.d.ts) are the generated package API and type declarations.
+document metadata. The generated package API and type declarations are written to
+[`generated/package-api/`](generated/package-api/). Release package bundles are
+written to [`generated/release-packages/`](generated/release-packages/).

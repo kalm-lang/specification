@@ -16,36 +16,34 @@
     "build:pdfs": "node scripts/build-pdfs.mjs",
     "test:pdfs": "node --test tests/pdf-layout.test.mjs tests/pdf-pagination.test.mjs"
   },
-  "main": "./index.cjs",
-  "module": "./index.mjs",
-  "types": "./index.d.ts",
+  "main": "./generated/package-api/index.cjs",
+  "module": "./generated/package-api/index.mjs",
+  "types": "./generated/package-api/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.mjs",
-      "require": "./index.cjs"
+      "types": "./generated/package-api/index.d.ts",
+      "import": "./generated/package-api/index.mjs",
+      "require": "./generated/package-api/index.cjs"
     },
     "./schema": "./schemas/frontmatter.schema.json",
     "./schemas/frontmatter.schema.json": "./schemas/frontmatter.schema.json",
     "./versions/*": {
-      "types": "./versions/*.d.mts",
-      "import": "./versions/*.mjs"
+      "types": "./generated/versions/*.d.mts",
+      "import": "./generated/versions/*.mjs"
     },
     "./drafts/*": {
-      "types": "./drafts/*.d.mts",
-      "import": "./drafts/*.mjs"
+      "types": "./generated/drafts/*.d.mts",
+      "import": "./generated/drafts/*.mjs"
     },
     "./documents/*": "./documents/*"
   },
   "files": [
-    "index.cjs",
-    "index.mjs",
-    "index.d.ts",
+    "generated/package-api/",
     "schemas/",
     "documents/",
-    "pdf/",
-    "versions/",
-    "drafts/",
+    "generated/pdf/",
+    "generated/versions/",
+    "generated/drafts/",
     "README.md",
     "LICENSE"
   ],
