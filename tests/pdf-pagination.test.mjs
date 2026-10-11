@@ -37,7 +37,7 @@ test('pagination protects section starts and safely splits long blocks', async (
   try {
     const fixture = [
       ['---', "$schema: '../schemas/frontmatter.schema.json'", "title: 'Kalm Language Specification'",
-        "version: '1.1.0'", "status: 'draft'", "date: '2026-10-11'", "lastmod: '2026-10-11'", "javaversion: '25'", "revision: '1'", '---'].join('\n'),
+        "version: '1.1.0'", "status: 'draft'", "date: '2026-10-11'", "lastmod: '2026-10-11'", "javaversion: '25'", '---'].join('\n'),
       '[main]: #intro', '## Intro',
       Array.from({ length: 43 }, (_, i) => `Explicit paragraph line ${i + 1}.  `).join('\n'),
       '## Boundary heading', '### Adjacent subheading', 'A short introduction to this example:',

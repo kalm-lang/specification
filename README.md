@@ -9,10 +9,8 @@ The Markdown files in [`documents/`](documents/) are the source of truth. Build
 scripts discover every `*.md` file in that folder; no separate document map is
 maintained. Each file starts with YAML front matter validated against
 [`schemas/frontmatter.schema.json`](schemas/frontmatter.schema.json). The
-front matter is also exported in the JavaScript API. `revision` is a quoted
-positive integer, normally `1`, and is incremented when the same version and
-status must be re-released. Revisions above `1` add `-rN` to the release tag
-and package version, such as `v1.1.0-r2` for revision `2` of a final release.
+front matter is also exported in the JavaScript API. Use the patch component of
+X.Y.Z for corrections that need a new release.
 
 The visible Markdown heading and concise edition details follow the front
 matter. The `[main]` reference points to the first section included in generated
@@ -57,7 +55,7 @@ const markdown = versions['1.1.0'].markdown;
 const metadata = versions['1.1.0'].metadata;
 const latestDraft = drafts['1.1.0-draft'];
 
-console.log(latestVersion, metadata.revision, latestDraft?.metadata.status);
+console.log(latestVersion, metadata.status, latestDraft?.metadata.status);
 ```
 
 Each document is also available as a static ESM module. It exports the Markdown

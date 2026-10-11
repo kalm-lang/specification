@@ -5,7 +5,6 @@ export interface SpecificationFrontMatter {
   date: string;
   lastmod: string;
   javaversion: string;
-  revision: string;
   [key: string]: string | number | boolean | null;
 }
 export interface SpecificationMetadata extends SpecificationFrontMatter {

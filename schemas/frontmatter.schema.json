@@ -10,8 +10,7 @@
     "status",
     "date",
     "lastmod",
-    "javaversion",
-    "revision"
+    "javaversion"
   ],
   "properties": {
     "$schema": {
@@ -27,12 +26,7 @@
     },
     "date": { "type": "string", "format": "date" },
     "lastmod": { "type": "string", "format": "date" },
-    "javaversion": { "type": "string", "pattern": "^[1-9][0-9]*$" },
-    "revision": {
-      "type": "string",
-      "pattern": "^[1-9][0-9]*$",
-      "description": "Quoted positive integer; revisions above 1 add a -rN release suffix."
-    }
+    "javaversion": { "type": "string", "pattern": "^[1-9][0-9]*$" }
   },
   "additionalProperties": {
     "type": ["string", "number", "boolean", "null"]

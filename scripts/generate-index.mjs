@@ -23,12 +23,11 @@ const compare = (left, right) => {
 };
 const latestVersion = records
   .filter(({ metadata }) => metadata.status === 'final')
-  .sort((left, right) => compare(left.metadata.version, right.metadata.version)
-    || Number(left.metadata.revision) - Number(right.metadata.revision))
+  .sort((left, right) => compare(left.metadata.version, right.metadata.version))
   .at(-1);
 if (!latestVersion) throw new Error('No final specification document found');
 
-const identityFor = (metadata) => `${metadata.version}${metadata.status === 'final' ? '' : `-${metadata.status}`}${Number(metadata.revision) > 1 ? `-r${metadata.revision}` : ''}`;
+const identityFor = (metadata) => metadata.status === 'final' ? metadata.version : `${metadata.version}-${metadata.status}`;
 const api = { latestVersion: identityFor(latestVersion.metadata), versions: {}, drafts: {} };
 for (const { file, markdown, metadata } of records) {
   const bucket = metadata.status === 'final' ? api.versions : api.drafts;
@@ -59,7 +58,6 @@ await Promise.all([
     '  date: string;',
     '  lastmod: string;',
     '  javaversion: string;',
-    '  revision: string;',
     '  [key: string]: string | number | boolean | null;',
     '}',
     'export interface SpecificationMetadata extends SpecificationFrontMatter {',

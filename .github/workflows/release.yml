@@ -148,7 +148,7 @@ jobs:
           const { parseFrontMatter } = require('./frontmatter.cjs');
           const file = process.argv[2];
           const metadata = parseFrontMatter(fs.readFileSync(file, 'utf8'), file);
-          for (const key of ['title', 'version', 'status', 'date', 'lastmod', 'javaversion', 'revision']) {
+          for (const key of ['title', 'version', 'status', 'date', 'lastmod', 'javaversion']) {
             const value = metadata[key];
             if (value === undefined || value === null || /[\r\n]/.test(String(value))) {
               throw new Error(`Missing or invalid release metadata: ${key}`);
@@ -157,7 +157,7 @@ jobs:
           }
           NODE
           )
-          if [ "${#METADATA[@]}" -ne 7 ]; then
+          if [ "${#METADATA[@]}" -ne 6 ]; then
             echo "Could not read all required specification metadata" >&2
             exit 1
           fi
@@ -167,20 +167,15 @@ jobs:
           SPECIFICATION_DATE="${METADATA[3]}"
           SPECIFICATION_LASTMOD="${METADATA[4]}"
           SPECIFICATION_JAVA_VERSION="${METADATA[5]}"
-          SPECIFICATION_REVISION="${METADATA[6]}"
           SPEC_FILENAME="${SPEC_FILE##*/}"
           SPEC_BASENAME="${SPEC_FILENAME%.md}"
-          METADATA_LABEL="${SPECIFICATION_VERSION} · ${SPECIFICATION_STATUS^} · ${SPECIFICATION_DATE} · Java ${SPECIFICATION_JAVA_VERSION} · Revision ${SPECIFICATION_REVISION}"
+          METADATA_LABEL="${SPECIFICATION_VERSION} · ${SPECIFICATION_STATUS^} · ${SPECIFICATION_DATE} · Java ${SPECIFICATION_JAVA_VERSION}"
           PDF_ASSETS=()
           RELEASE_FLAGS=()
           SPECIFICATION_SUFFIX=""
-          REVISION_SUFFIX=""
           if [ "$SPECIFICATION_STATUS" != "final" ]; then
             RELEASE_FLAGS+=(--prerelease)
             SPECIFICATION_SUFFIX="-$SPECIFICATION_STATUS"
-          fi
-          if [ "$SPECIFICATION_REVISION" -gt 1 ]; then
-            REVISION_SUFFIX="-r$SPECIFICATION_REVISION"
           fi
           for theme in light dark print; do
             PDF_FILE=".release-packages/versioned/pdf/${SPEC_BASENAME}-${theme}.pdf"
@@ -201,7 +196,6 @@ jobs:
           | Date | SPECIFICATION_DATE |
           | Last modified | SPECIFICATION_LASTMOD |
           | Minimum Java version | SPECIFICATION_JAVA_VERSION |
-          | Revision | SPECIFICATION_REVISION |
 
           The version-matched Markdown specification and its light, dark, and print PDF editions are attached below.
 
@@ -217,14 +211,13 @@ jobs:
           NOTES="${NOTES//SPECIFICATION_DATE/$SPECIFICATION_DATE}"
           NOTES="${NOTES//SPECIFICATION_LASTMOD/$SPECIFICATION_LASTMOD}"
           NOTES="${NOTES//SPECIFICATION_JAVA_VERSION/$SPECIFICATION_JAVA_VERSION}"
-          NOTES="${NOTES//SPECIFICATION_REVISION/$SPECIFICATION_REVISION}"
           NOTES="${NOTES//RELEASE_VERSION/$RELEASE_VERSION}"
 
           gh release create "$RELEASE_TAG" \
             "$SPEC_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · Markdown" \
             "${PDF_ASSETS[@]}" \
             --verify-tag \
-            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}${REVISION_SUFFIX}" \
+            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}" \
             --notes "$NOTES" \
             --generate-notes \
             "${RELEASE_FLAGS[@]}"

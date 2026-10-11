@@ -33,16 +33,12 @@ const basePackage = JSON.parse(await readFile(path.join(root, 'package.json'), '
 const version = process.env.RELEASE_VERSION;
 const versionMatch = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([a-z][a-z0-9-]*))?$/.exec(version ?? '');
 const specificationVersion = versionMatch ? `${versionMatch[1]}.${versionMatch[2]}.${versionMatch[3]}` : '';
-const finalRevisionMatch = /^r([1-9]\d*)$/.exec(versionMatch?.[4] ?? '');
-const revisionMatch = /^(.*)-r([1-9]\d*)$/.exec(versionMatch?.[4] ?? '');
-const selectedStatus = finalRevisionMatch ? 'final' : (revisionMatch ? revisionMatch[1] : versionMatch?.[4]) || 'final';
-const selectedRevision = Number(finalRevisionMatch?.[1] ?? revisionMatch?.[2] ?? 1);
-const selected = documents.find((entry) => entry.version === specificationVersion && entry.status === selectedStatus
-  && Number(entry.metadata.revision) === selectedRevision);
+const selectedStatus = versionMatch?.[4] ?? 'final';
+const selected = documents.find((entry) => entry.version === specificationVersion && entry.status === selectedStatus);
 if (!selected) throw new Error(`No ${selectedStatus} specification document exists for release version ${version ?? '(empty)'}`);
 
 function enrichedMetadata(entry) {
-  const identity = `${entry.version}${entry.status === 'final' ? '' : `-${entry.status}`}${Number(entry.metadata.revision) > 1 ? `-r${entry.metadata.revision}` : ''}`;
+  const identity = entry.status === 'final' ? entry.version : `${entry.version}-${entry.status}`;
   return {
     ...entry.metadata,
     specificationVersion: identity,
@@ -64,7 +60,6 @@ function typeDefinitions() {
     '  date: string;',
     '  lastmod: string;',
     '  javaversion: string;',
-    '  revision: string;',
     '  [key: string]: string | number | boolean | null;',
     '}',
     'export interface SpecificationMetadata extends SpecificationFrontMatter {',
@@ -89,8 +84,7 @@ async function writeStaticModule(output, directory, entry) {
 
 function rootApi(entries) {
   const latestFinal = entries.filter((entry) => entry.status === 'final')
-    .sort((left, right) => compareVersions(left.version, right.version)
-      || Number(left.metadata.revision) - Number(right.metadata.revision)).at(-1);
+    .sort((left, right) => compareVersions(left.version, right.version)).at(-1);
   const api = { latestVersion: latestFinal ? enrichedMetadata(latestFinal).specificationVersion : null, versions: {}, drafts: {} };
   for (const entry of entries) {
     const bucket = entry.status === 'final' ? api.versions : api.drafts;
@@ -124,7 +118,6 @@ async function writeRootApi(output, entries) {
       '  date: string;',
       '  lastmod: string;',
       '  javaversion: string;',
-      '  revision: string;',
       '  [key: string]: string | number | boolean | null;',
       '}',
       'export interface SpecificationMetadata extends SpecificationFrontMatter {',
