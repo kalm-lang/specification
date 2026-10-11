@@ -3,6 +3,13 @@
 This repository contains the versioned Kalm language specification. The
 Markdown files in [documents/](documents/) are the source of truth. JavaScript packages and PDFs are generated from them.
 
+## Folder overview
+
+- [`documents/`](documents/): source Markdown editions.
+- [`schemas/`](schemas/): JSON schemas.
+- [`scripts/`](scripts/): PDF generation and release tooling.
+- [`templates/`](templates/): shared PDF layout templates.
+
 ## Versions and status
 
 Every document uses an `X.Y.Z` version. `final` is the default release status and has no
@@ -93,16 +100,6 @@ enter `draft` or `-draft` for a draft. The hyphen is optional. An empty version
 selects the latest final edition. The workflow validates the selected document,
 builds its PDFs, publishes a focused package and a historical bundle, and
 attaches the Markdown and PDFs to a GitHub release.
-
-## Repository layout
-
-- [`documents/`](documents/) — source Markdown editions.
-- [`schemas/`](schemas/) — front matter JSON Schema.
-- [`scripts/`](scripts/) — front matter, PDF, index, and release-package tooling.
-- [`templates/`](templates/) — shared PDF layout and cover template.
-- [`tests/`](tests/) — PDF layout and pagination checks.
-- [`.github/workflows/`](.github/workflows/) — automated release workflow.
-- [`output/`](output/) — locally generated PDFs; ignored by Git.
 
 At the repository root, [`frontmatter.cjs`](frontmatter.cjs) parses and validates
 document metadata. [`index.cjs`](index.cjs), [`index.mjs`](index.mjs), and
