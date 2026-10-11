@@ -148,7 +148,7 @@ jobs:
           const { parseFrontMatter } = require('./frontmatter.cjs');
           const file = process.argv[2];
           const metadata = parseFrontMatter(fs.readFileSync(file, 'utf8'), file);
-          for (const key of ['title', 'version', 'status', 'date', 'lastmod', 'javaversion']) {
+          for (const key of ['title', 'version', 'status']) {
             const value = metadata[key];
             if (value === undefined || value === null || /[\r\n]/.test(String(value))) {
               throw new Error(`Missing or invalid release metadata: ${key}`);
@@ -157,20 +157,18 @@ jobs:
           }
           NODE
           )
-          if [ "${#METADATA[@]}" -ne 6 ]; then
+          if [ "${#METADATA[@]}" -ne 3 ]; then
             echo "Could not read all required specification metadata" >&2
             exit 1
           fi
           SPECIFICATION_TITLE="${METADATA[0]}"
           SPECIFICATION_VERSION="${METADATA[1]}"
           SPECIFICATION_STATUS="${METADATA[2]}"
-          SPECIFICATION_DATE="${METADATA[3]}"
-          SPECIFICATION_LASTMOD="${METADATA[4]}"
-          SPECIFICATION_JAVA_VERSION="${METADATA[5]}"
           SPEC_FILENAME="${SPEC_FILE##*/}"
           SPEC_BASENAME="${SPEC_FILENAME%.md}"
-          METADATA_LABEL="${SPECIFICATION_VERSION} · ${SPECIFICATION_STATUS^} · ${SPECIFICATION_DATE} · Java ${SPECIFICATION_JAVA_VERSION}"
+          DISPLAY_TITLE="${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION} ${SPECIFICATION_STATUS^}"
           PDF_ASSETS=()
+          PDF_LINKS=()
           RELEASE_FLAGS=()
           SPECIFICATION_SUFFIX=""
           if [ "$SPECIFICATION_STATUS" != "final" ]; then
@@ -184,20 +182,17 @@ jobs:
               exit 1
             fi
             THEME_LABEL="${theme^}"
-            PDF_ASSETS+=("$PDF_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · ${THEME_LABEL} PDF")
+            PDF_ASSETS+=("$PDF_FILE#${DISPLAY_TITLE} (${THEME_LABEL})")
+            PDF_LINKS+=("- [${THEME_LABEL} PDF](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${SPEC_BASENAME}-${theme}.pdf)")
           done
+          DOCUMENT_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/documents/${SPEC_FILENAME}"
           NOTES=$(cat <<'EOF'
-          ## SPECIFICATION_TITLE SPECIFICATION_VERSION
+          ## Published documents
 
-          | Metadata | Value |
-          | --- | --- |
-          | Specification version | SPECIFICATION_VERSION |
-          | Status | SPECIFICATION_STATUS |
-          | Date | SPECIFICATION_DATE |
-          | Last modified | SPECIFICATION_LASTMOD |
-          | Minimum Java version | SPECIFICATION_JAVA_VERSION |
-
-          The version-matched Markdown specification and its light, dark, and print PDF editions are attached below.
+          - [Markdown specification](DOCUMENT_LINK)
+          LIGHT_PDF_LINK
+          DARK_PDF_LINK
+          PRINT_PDF_LINK
 
           ## Published packages
 
@@ -205,19 +200,16 @@ jobs:
           - Historical bundle: `@kalm-lang/specification@RELEASE_VERSION-full`
           EOF
           )
-          NOTES="${NOTES//SPECIFICATION_TITLE/$SPECIFICATION_TITLE}"
-          NOTES="${NOTES//SPECIFICATION_VERSION/$SPECIFICATION_VERSION}"
-          NOTES="${NOTES//SPECIFICATION_STATUS/$SPECIFICATION_STATUS}"
-          NOTES="${NOTES//SPECIFICATION_DATE/$SPECIFICATION_DATE}"
-          NOTES="${NOTES//SPECIFICATION_LASTMOD/$SPECIFICATION_LASTMOD}"
-          NOTES="${NOTES//SPECIFICATION_JAVA_VERSION/$SPECIFICATION_JAVA_VERSION}"
+          NOTES="${NOTES//DOCUMENT_LINK/$DOCUMENT_LINK}"
+          NOTES="${NOTES//LIGHT_PDF_LINK/${PDF_LINKS[0]}}"
+          NOTES="${NOTES//DARK_PDF_LINK/${PDF_LINKS[1]}}"
+          NOTES="${NOTES//PRINT_PDF_LINK/${PDF_LINKS[2]}}"
           NOTES="${NOTES//RELEASE_VERSION/$RELEASE_VERSION}"
 
           gh release create "$RELEASE_TAG" \
-            "$SPEC_FILE#${SPECIFICATION_TITLE} · ${METADATA_LABEL} · Markdown" \
+            "$SPEC_FILE#${DISPLAY_TITLE} (Markdown)" \
             "${PDF_ASSETS[@]}" \
             --verify-tag \
             --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}" \
             --notes "$NOTES" \
-            --generate-notes \
             "${RELEASE_FLAGS[@]}"

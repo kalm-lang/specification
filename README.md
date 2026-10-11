@@ -1,119 +1,108 @@
 # Kalm language specification
 
-This repository contains the versioned Kalm language specifications and
-publishes them as `@kalm-lang/specification` to GitHub Packages.
+This repository contains the versioned Kalm language specification. The
+Markdown files in [documents/](documents/) are the source of truth. JavaScript packages and PDFs are generated from them.
 
-## Documents and metadata
+## Versions and status
 
-The Markdown files in [`documents/`](documents/) are the source of truth. Build
-scripts discover every `*.md` file in that folder; no separate document map is
-maintained. Each file starts with YAML front matter validated against
-[`schemas/frontmatter.schema.json`](schemas/frontmatter.schema.json). The
-front matter is also exported in the JavaScript API. Use the patch component of
-X.Y.Z for corrections that need a new release.
+Every document uses an `X.Y.Z` version. `final` is the default release status and has no
+suffix. Drafts and other statuses use `-<status>` in the filename, Git tag, and
+package version. Status names are lowercase, such as `draft` or `candidate`.
 
-The visible Markdown heading and concise edition details follow the front
-matter. The `[main]` reference points to the first section included in generated
-PDFs, allowing PDFs to use the metadata for their cover without repeating the
-Markdown preface.
+Examples:
 
-Documents use `X.Y.Z` version identities and filenames such as `v1.1.0.md` or
-`v1.1.0-draft.md`. Final releases omit a status suffix; other statuses use
-`-<status>` in filenames, Git tags, and package versions:
+- [`v1.1.0.md`](documents/v1.1.0.md): final `1.1.0` specification.
+- [`v1.1.0-draft.md`](documents/v1.1.0-draft.md): draft `1.1.0` specification.
+- A candidate could be named `v1.2.0-candidate.md` with `status: 'candidate'`.
 
-- `@kalm-lang/specification@1.1.0` contains the final `1.1.0` document.
-- `@kalm-lang/specification@1.1.0-draft` contains the `1.1.0` draft document.
-- `@kalm-lang/specification@1.1.0-full` contains all documents, including
-  historical drafts.
+Each document starts with front matter validated against
+[`schemas/frontmatter.schema.json`](schemas/frontmatter.schema.json). For
+example:
 
-## Importing
+```yaml
+---
+$schema: '../schemas/frontmatter.schema.json'
+title: 'Kalm Language Specification'
+version: '1.1.0'
+status: 'final'
+date: '2026-10-10'
+lastmod: '2026-10-10'
+javaversion: '25'
+---
+```
 
-Configure npm to resolve the organization scope through GitHub Packages and
-authenticate with a token that can read the package:
+## Use the published package
+
+The package is published to GitHub Packages. Configure npm with a token that
+can read the `kalm-lang` package:
 
 ```ini
 @kalm-lang:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Then install a package:
+Install one final or draft edition, or the historical bundle containing all
+documents:
 
 ```sh
 npm install @kalm-lang/specification@1.1.0
-# Or install the historical bundle:
+npm install @kalm-lang/specification@1.1.0-draft
 npm install @kalm-lang/specification@1.1.0-full
 ```
 
-The root API is static data: each edition record contains the Markdown and all
-front matter fields. It exposes `latestVersion`, final `versions`, and `drafts`;
-there are no runtime document lookup functions or file reads.
+The package root exports static data: `versions` contains final editions and
+`drafts` contains non-final editions, keyed by their version and status.
 
 ```js
 import { drafts, latestVersion, versions } from '@kalm-lang/specification';
 
-const markdown = versions['1.1.0'].markdown;
-const metadata = versions['1.1.0'].metadata;
-const latestDraft = drafts['1.1.0-draft'];
-
-console.log(latestVersion, metadata.status, latestDraft?.metadata.status);
+const finalMarkdown = versions['1.1.0'].markdown;
+const draftMarkdown = drafts['1.1.0-draft'].markdown;
+console.log(latestVersion, finalMarkdown, draftMarkdown);
 ```
 
-Each document is also available as a static ESM module. It exports the Markdown
-as its default value and its front matter as `metadata`:
+Each edition can also be imported directly as a Markdown string, with its
+front matter exported as `metadata`:
 
 ```js
 import specification, { metadata } from '@kalm-lang/specification/versions/1.1.0';
-import draft from '@kalm-lang/specification/drafts/1.1.0-draft';
-
-console.log(specification, metadata.javaversion, draft);
 ```
 
-The schema is published at `@kalm-lang/specification/schema` and
-`@kalm-lang/specification/schemas/frontmatter.schema.json`.
+The schema is available from `@kalm-lang/specification/schema`.
 
-## PDFs
+## Build PDFs
 
-Generate light, dark, and print editions with Node.js:
+Install the development dependencies and generate light, dark, and print PDFs
+for the latest final edition:
 
 ```sh
 npm install
 npm run build:pdfs
 ```
 
-By default, the build selects the latest final specification version and
-generates its three theme PDFs. Select a document with
-`npm run build:pdfs -- --version 1.1.0` for its final version, or pass
-`1.1.0-draft` (or another status suffix) to generate that status. Use
-`npm run build:pdfs -- --all` to generate every version.
+Use `npm run build:pdfs -- --version 1.1.0-draft` to select another edition,
+`--theme print` to build one theme, or `--all` to build every edition. PDFs are
+written to [`output/pdf/`](output/pdf/).
 
-Choose one theme with `npm run build:pdfs -- --theme print` (also accepts
-`light` or `dark`). Outputs are named `<document>-<theme>.pdf` in `output/pdf/`.
+## Release
 
-The renderer measures content before placing it: headings stay with the start
-of their sections, short paragraphs and examples stay together, and longer
-paragraphs avoid single lines at page edges. Code preserves indentation when
-wrapped and prefers source boundaries when split. Tables size columns from
-their content and repeat headers on subsequent pages. Contents entries include
-page numbers and links to the corresponding sections.
+Push `vX.Y.Z` for a final edition or `vX.Y.Z-<status>` for a non-final edition.
+Alternatively, run the **Release specification** workflow and enter a version
+and status. An empty status or `final` omits the suffix; an empty version
+selects the latest final edition. The workflow validates the selected document,
+builds its PDFs, publishes a focused package and a historical bundle, and
+attaches the Markdown and PDFs to a GitHub release.
 
-When the last page is almost empty, a bounded reflow pass tries slightly tighter
-body spacing without changing font sizes. It is used only when it removes a page.
+## Repository layout
 
-Run the layout and pagination regression checks with `npm run test:pdfs`.
+- [`documents/`](documents/) — source Markdown editions.
+- [`schemas/`](schemas/) — front matter JSON Schema.
+- [`scripts/`](scripts/) — front matter, PDF, index, and release-package tooling.
+- [`templates/`](templates/) — shared PDF layout and cover template.
+- [`tests/`](tests/) — PDF layout and pagination checks.
+- [`.github/workflows/`](.github/workflows/) — automated release workflow.
+- [`output/`](output/) — locally generated PDFs; ignored by Git.
 
-## Releasing
-
-Push a `vX.Y.Z` tag for a final specification or `vX.Y.Z-<status>` for another
-status, or start **Release specification** with `workflow_dispatch`. Enter an
-X.Y.Z version and choose a status; empty or `final` omits the suffix. An empty
-version selects the latest final version. The workflow validates the tag and
-status against front matter and stops when the GitHub release or npm package
-version already exists.
-
-The workflow generates all three PDF themes for the release's target version,
-prepares focused and historical Markdown packages, and attaches the matching
-Markdown and PDFs to the GitHub release. Both packages include the PDFs for
-that release; the historical package retains Markdown and static APIs for every
-specification version.
-Git tags, specification identities, and npm package versions use `X.Y.Z`, with
-`-<status>` for non-final releases.
+At the repository root, [`frontmatter.cjs`](frontmatter.cjs) parses and validates
+document metadata. [`index.cjs`](index.cjs), [`index.mjs`](index.mjs), and
+[`index.d.ts`](index.d.ts) are the generated package API and type declarations.

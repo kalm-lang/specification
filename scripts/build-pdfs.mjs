@@ -609,7 +609,7 @@ function renderTokens(flow, tokens) {
 
 async function renderDocument(tokens, metadata, themeName, compact = false) {
   const document = await PDFDocument.create();
-  document.setTitle(`${metadata.title} ${metadata.version}`);
+  document.setTitle(`${metadata.title} ${metadata.version} ${metadata.status}`);
   document.setAuthor('Kalm language project');
   document.setSubject(`Kalm ${metadata.version} language specification (${metadata.status})`);
   const fonts = await embeddedFonts(document);
