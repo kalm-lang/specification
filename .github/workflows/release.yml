@@ -201,11 +201,13 @@ jobs:
             PDF_ASSETS+=("$PDF_FILE#${DISPLAY_TITLE} (${THEME_LABEL})")
             PDF_LINKS+=("- [${THEME_LABEL} PDF](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${SPEC_BASENAME}-${theme}.pdf)")
           done
-          DOCUMENT_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/documents/${SPEC_FILENAME}"
+          DOCUMENT_ASSET_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${SPEC_FILENAME}"
+          DOCUMENT_SOURCE_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/documents/${SPEC_FILENAME}"
           NOTES=$(cat <<'EOF'
           ## Published documents
 
-          - [Markdown specification](DOCUMENT_LINK)
+          - [Markdown specification](DOCUMENT_ASSET_LINK)
+          - [Markdown specification (direct)](DOCUMENT_SOURCE_LINK)
           LIGHT_PDF_LINK
           DARK_PDF_LINK
           PRINT_PDF_LINK
@@ -216,7 +218,8 @@ jobs:
           - Historical bundle: `@kalm-lang/specification@RELEASE_VERSION-full`
           EOF
           )
-          NOTES="${NOTES//DOCUMENT_LINK/$DOCUMENT_LINK}"
+          NOTES="${NOTES//DOCUMENT_ASSET_LINK/$DOCUMENT_ASSET_LINK}"
+          NOTES="${NOTES//DOCUMENT_SOURCE_LINK/$DOCUMENT_SOURCE_LINK}"
           NOTES="${NOTES//LIGHT_PDF_LINK/${PDF_LINKS[0]}}"
           NOTES="${NOTES//DARK_PDF_LINK/${PDF_LINKS[1]}}"
           NOTES="${NOTES//PRINT_PDF_LINK/${PDF_LINKS[2]}}"
