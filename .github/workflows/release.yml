@@ -11,7 +11,7 @@ on:
         required: false
         type: string
       status:
-        description: 'Release status (empty or final omits a suffix; other values use -<status>).'
+        description: 'Release status'
         required: false
         type: string
         default: 'final'

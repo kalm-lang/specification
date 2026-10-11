@@ -41,7 +41,8 @@ if (eventName === 'push') {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     throw new Error(`Specification release must use X.Y.Z; received: ${version || '(empty)'}`);
   }
-  status = !inputStatus || inputStatus === 'final' ? 'final' : inputStatus;
+  status = inputStatus.replace(/^-/, '') || 'final';
+  if (status === 'final') status = 'final';
   if (!/^[a-z][a-z0-9-]*$/.test(status)) throw new Error(`Invalid release status: ${status}`);
 }
 

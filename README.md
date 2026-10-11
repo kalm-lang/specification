@@ -88,7 +88,8 @@ written to [`output/pdf/`](output/pdf/).
 
 Push `vX.Y.Z` for a final edition or `vX.Y.Z-<status>` for a non-final edition.
 Alternatively, run the **Release specification** workflow and enter a version
-and status. An empty status or `final` omits the suffix; an empty version
+and status. Leave status empty or enter `final`/`-final` for a final release;
+enter `draft` or `-draft` for a draft. The hyphen is optional. An empty version
 selects the latest final edition. The workflow validates the selected document,
 builds its PDFs, publishes a focused package and a historical bundle, and
 attaches the Markdown and PDFs to a GitHub release.
