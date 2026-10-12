@@ -28,7 +28,17 @@ jobs:
   publish:
     name: Publish specification packages
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      KALM_PACKAGES_READ_TOKEN: ${{ secrets.KALM_PACKAGES_READ_TOKEN }}
     steps:
+      - name: Require package-read credentials
+        shell: bash
+        run: |
+          if [[ -z "$KALM_PACKAGES_READ_TOKEN" ]]; then
+            echo '::error::Set KALM_PACKAGES_READ_TOKEN and publish the shared highlighting package first.'
+            exit 1
+          fi
       - name: Check out full history
         uses: actions/checkout@v4
         with:
@@ -42,7 +52,7 @@ jobs:
           scope: '@kalm-lang'
 
       - name: Install Node.js build dependencies
-        run: npm install --include=dev --ignore-scripts --no-audit --no-fund
+        run: npm install --include=dev --ignore-scripts --no-audit --no-fund --no-package-lock --fetch-retries=0
 
       - name: Resolve and validate release version
         id: release
@@ -90,6 +100,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KALM_PACKAGES_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for package_version in "$RELEASE_VERSION" "${RELEASE_VERSION}-full"; do
             package="@kalm-lang/specification@$package_version"
@@ -120,12 +131,14 @@ jobs:
       - name: Publish focused specification package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KALM_PACKAGES_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: npm publish "generated/release-packages/versioned" --registry=https://npm.pkg.github.com
 
       - name: Publish historical specification package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KALM_PACKAGES_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: npm publish "generated/release-packages/full" --registry=https://npm.pkg.github.com
 

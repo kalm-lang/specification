@@ -1,2 +1,5 @@
 generated/pdf/
 generated/release-packages/
+node_modules/
+tmp/
+*.tgz

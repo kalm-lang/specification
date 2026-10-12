@@ -5,9 +5,10 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import frontMatter from '../frontmatter.cjs';
 import { chooseLineCount, chooseCodeCount, wrapCode, tableColumnWidths } from './pdf-layout.mjs';
+import { highlightCodeBlocks, codeRuns } from './code-highlighting.mjs';
 import {
   BOTTOM, LEFT, PAGE_HEIGHT, PAGE_WIDTH, RIGHT, TOP,
-  colors, drawCover, drawPageChrome, embeddedFonts, normalizeText,
+  color, colors, drawCover, drawPageChrome, embeddedFonts, normalizeText,
 } from '../templates/specification-pdf-template.mjs';
 
 const require = createRequire(import.meta.url);
@@ -308,9 +309,18 @@ function drawCode(flow, token) {
     page.drawRectangle({ x: LEFT, y: top - height, width: RIGHT - LEFT, height, color: flow.theme.surface });
     page.drawRectangle({ x: LEFT, y: top - height, width: 3, height, color: flow.theme.accent });
     page.drawText(index ? `${language} / CONTINUED` : language, { x: innerX, y: top - 12, size: 6.2, font: flow.fonts.bold, color: flow.theme.accent });
-    chunk.forEach((line, row) => page.drawText(line.text, {
-      x: innerX, y: top - CODE_LABEL_HEIGHT - CODE_SIZE - row * CODE_LEADING, size: CODE_SIZE, font: flow.fonts.code, color: flow.theme.codeInk,
-    }));
+    chunk.forEach((line, row) => {
+      let x = innerX;
+      for (const run of codeRuns(line, token.highlightedLines?.[line.source])) {
+        if (!run.text) continue;
+        page.drawText(run.text, {
+          x, y: top - CODE_LABEL_HEIGHT - CODE_SIZE - row * CODE_LEADING,
+          size: CODE_SIZE, font: flow.fonts.code,
+          color: run.color ? color(run.color) : flow.theme.codeInk,
+        });
+        x += flow.fonts.code.widthOfTextAtSize(run.text, CODE_SIZE);
+      }
+    });
     flow.record('code', top, top - height, { rows: count, continuation: index > 0, firstSource: chunk[0].source, lastSource: chunk.at(-1).source });
     flow.setY(top - height - 8);
     index += chunk.length;
@@ -628,6 +638,7 @@ export async function buildPdf(source, outputPath, themeName) {
   const markdown = await readFile(source, 'utf8');
   const metadata = parseFrontMatter(markdown, path.relative(root, source));
   const tokens = marked.lexer(splitAtMain(markdown, source), { gfm: true });
+  await highlightCodeBlocks(tokens, normalizeText, themeName);
   let result = await renderDocument(tokens, metadata, themeName);
   const last = result.records.at(-1);
   // A bounded retry can remove a nearly empty final page without shrinking type.

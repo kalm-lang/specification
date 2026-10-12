@@ -15,6 +15,7 @@ export function chooseLineCount(remaining, capacity, fullCapacity, { minLines = 
 
 export function wrapCode(text, measure, width) {
   const rows = [];
+  let sourceOffset = 0;
   for (const [source, raw] of text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n').entries()) {
     const line = raw.replaceAll('\t', '    ');
     const indent = /^ */.exec(line)[0];
@@ -40,11 +41,13 @@ export function wrapCode(text, measure, width) {
       }
       if (end < rest.length && boundary) end = boundary;
       const part = rest.slice(0, end);
-      rows.push({ text: prefix + part, sourceText: part, source, continuation, breakAfter: false });
+      const sourceStart = sourceOffset + line.length - rest.length;
+      rows.push({ text: prefix + part, sourceText: part, prefix, sourceStart, sourceEnd: sourceStart + part.length, source, continuation, breakAfter: false });
       rest = rest.slice(end);
       continuation = true;
     } while (rest.length);
     rows.at(-1).breakAfter = !line.trim() || /^[}\])]+[;,]?$/.test(line.trim());
+    sourceOffset += line.length + 1;
   }
   return rows;
 }

@@ -14,7 +14,7 @@
   "type": "module",
   "scripts": {
     "build:pdfs": "node scripts/build-pdfs.mjs",
-    "test:pdfs": "node --test tests/pdf-layout.test.mjs tests/pdf-pagination.test.mjs"
+    "test:pdfs": "node --test tests/pdf-layout.test.mjs tests/pdf-pagination.test.mjs tests/code-highlighting.test.mjs"
   },
   "main": "./generated/package-api/index.cjs",
   "module": "./generated/package-api/index.mjs",
@@ -56,6 +56,7 @@
   "devDependencies": {
     "@pdf-lib/fontkit": "1.1.1",
     "marked": "17.0.5",
-    "pdf-lib": "1.17.1"
+    "pdf-lib": "1.17.1",
+    "@kalm-lang/syntax-highlighting": "0.1.0"
   }
 }

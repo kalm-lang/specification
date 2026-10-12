@@ -47,7 +47,7 @@ can read the `kalm-lang` package:
 
 ```ini
 @kalm-lang:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+//npm.pkg.github.com/:_authToken=${KALM_PACKAGES_READ_TOKEN}
 ```
 
 Install one final or draft edition, or the historical bundle containing all
@@ -107,3 +107,9 @@ At the repository root, [`frontmatter.cjs`](frontmatter.cjs) parses and validate
 document metadata. The generated package API and type declarations are written to
 [`generated/package-api/`](generated/package-api/). Release package bundles are
 written to [`generated/release-packages/`](generated/release-packages/).
+
+## Shared syntax highlighting
+
+PDF code blocks use `@kalm-lang/syntax-highlighting@0.1.0`: GitHub light syntax colors for light and print PDFs, and GitHub dark colors for dark PDFs. The existing page palettes, fonts, wrapping, pagination and source text remain intact. Highlighting rules preserve current Kalm coverage, including historical spellings; they do not implement the 1.2 draft.
+
+Set `KALM_PACKAGES_READ_TOKEN` with package-read access, then run `npm install --no-package-lock`, `npm run test:pdfs`, and `npm run build:pdfs`. Before registry publication, install the shared package's local tarball with `npm install --no-save --no-package-lock <tarball>`. Default manifests resolve the pinned package independently of sibling checkouts. Once published, commit a registry-backed lockfile. Release installation reads cross-repository packages with the read token; package publication uses the repository token.
