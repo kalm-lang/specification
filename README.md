@@ -1,7 +1,8 @@
 # Kalm language specification
 
 This repository contains the versioned Kalm language specification. The
-Markdown files in [documents/](documents/) are the source of truth. JavaScript packages and PDFs are generated from them.
+Markdown files in [documents/](documents/) are the source of truth. JavaScript packages and PDFs are generated from
+them.
 
 ## Folder overview
 
@@ -63,7 +64,7 @@ The package root exports static data: `versions` contains final editions and
 `drafts` contains non-final editions, keyed by their version and status.
 
 ```js
-import { drafts, latestVersion, versions } from '@kalm-lang/specification';
+import {drafts, latestVersion, versions} from '@kalm-lang/specification';
 
 const finalMarkdown = versions['1.1.0'].markdown;
 const draftMarkdown = drafts['1.1.0-draft'].markdown;
@@ -74,7 +75,7 @@ Each edition can also be imported directly as a Markdown string, with its
 front matter exported as `metadata`:
 
 ```js
-import specification, { metadata } from '@kalm-lang/specification/versions/1.1.0';
+import specification, {metadata} from '@kalm-lang/specification/versions/1.1.0';
 ```
 
 The schema is available from `@kalm-lang/specification/schema`.
@@ -110,6 +111,12 @@ written to [`generated/release-packages/`](generated/release-packages/).
 
 ## Shared syntax highlighting
 
-PDF code blocks use `@kalm-lang/syntax-highlighting@0.1.0`: GitHub light syntax colors for light and print PDFs, and GitHub dark colors for dark PDFs. The existing page palettes, fonts, wrapping, pagination and source text remain intact. Highlighting rules preserve current Kalm coverage, including historical spellings; they do not implement the 1.2 draft.
+PDF code blocks use `@kalm-lang/syntax-highlighting@0.1.0`: GitHub light syntax colors for light and print PDFs, and
+GitHub dark colors for dark PDFs. The existing page palettes, fonts, wrapping, pagination and source text remain intact.
+Highlighting rules preserve current Kalm coverage, including historical spellings; they do not implement the 1.2 draft.
 
-Set `KALM_PACKAGES_READ_TOKEN` with package-read access, then run `npm install --no-package-lock`, `npm run test:pdfs`, and `npm run build:pdfs`. Before registry publication, install the shared package's local tarball with `npm install --no-save --no-package-lock <tarball>`. Default manifests resolve the pinned package independently of sibling checkouts. Once published, commit a registry-backed lockfile. Release installation reads cross-repository packages with the read token; package publication uses the repository token.
+Set `KALM_PACKAGES_READ_TOKEN` with package-read access, then run `npm install --no-package-lock`, `npm run test:pdfs`,
+and `npm run build:pdfs`. Before registry publication, install the shared package's local tarball with
+`npm install --no-save --no-package-lock <tarball>`. Default manifests resolve the pinned package independently of
+sibling checkouts. Once published, commit a registry-backed lockfile. Release installation reads cross-repository
+packages with the read token; package publication uses the repository token.

@@ -17,18 +17,38 @@
       "const": "../schemas/frontmatter.schema.json",
       "description": "Relative path to this schema from the Markdown document."
     },
-    "title": { "type": "string", "minLength": 1 },
-    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
     "status": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
       "description": "Use final for a release without a status suffix; every other status is suffixed as -<status>."
     },
-    "date": { "type": "string", "format": "date" },
-    "lastmod": { "type": "string", "format": "date" },
-    "javaversion": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "lastmod": {
+      "type": "string",
+      "format": "date"
+    },
+    "javaversion": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    }
   },
   "additionalProperties": {
-    "type": ["string", "number", "boolean", "null"]
+    "type": [
+      "string",
+      "number",
+      "boolean",
+      "null"
+    ]
   }
 }
