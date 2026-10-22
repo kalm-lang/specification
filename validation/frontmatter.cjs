@@ -1,6 +1,6 @@
 'use strict';
 
-const schema = require('./schemas/frontmatter.schema.json');
+const schema = require('./frontmatter.schema.json');
 
 function validateAgainstSchema(metadata, source) {
     const errors = [];
@@ -27,7 +27,7 @@ function validateAgainstSchema(metadata, source) {
             }
         }
     }
-    if (errors.length) throw new Error(`Front matter in ${source} does not match schemas/frontmatter.schema.json: ${errors.join('; ')}`);
+    if (errors.length) throw new Error(`Front matter in ${source} does not match validation/frontmatter.schema.json: ${errors.join('; ')}`);
 }
 
 function parseFrontMatter(markdown, source = 'document') {

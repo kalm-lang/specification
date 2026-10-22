@@ -6,7 +6,7 @@ import {normalizeText} from '../templates/specification-pdf-template.mjs';
 
 test('wrapped PDF code preserves source and colors across tokens and multiline comments', async () => {
     const source = '\t## a long comment with 😀 and multiple visual rows\ncontinued ##\n\tfix value = "long string content"\n';
-    for (const theme of ['light', 'dark', 'print']) {
+    for (const theme of (process.env.PDF_TEST_THEME ? [process.env.PDF_TEST_THEME, 'print'] : ['light', 'dark', 'print'])) {
         const block = {type: 'code', lang: 'kalm', text: source};
         await highlightCodeBlocks([block], normalizeText, theme);
         const rows = wrapCode(normalizeText(source), value => [...value].length, 18);

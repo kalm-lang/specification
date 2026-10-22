@@ -238,7 +238,7 @@ export function drawPageChrome(page, metadata, theme, fonts, pageNumber) {
         thickness: 1.8,
         color: theme.accentInk
     });
-    page.drawText('Kalm Specification', {
+    page.drawText(metadata.title, {
         x: markX + 21, y: PAGE_HEIGHT - 30, size: 8.2, font: fonts.bold, color: theme.accent,
     });
     const edition = `${metadata.version}  /  ${metadata.status.toUpperCase()}`;

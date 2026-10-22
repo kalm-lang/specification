@@ -1,14 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdir, mkdtemp, readdir, readFile, rm, writeFile} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {buildPdf} from '../scripts/build-pdfs.mjs';
+import {loadEditions} from '../scripts/editions.mjs';
 
 const require = createRequire(import.meta.url);
 const {PDFDocument, PDFName} = require('pdf-lib');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const testTheme = process.env.PDF_TEST_THEME ?? 'light';
 
 function validateLayout(result) {
     const {records} = result;
@@ -36,7 +38,7 @@ test('pagination protects section starts and safely splits long blocks', async (
     const temp = await mkdtemp(path.join(root, 'tmp', 'pdf-pagination-'));
     try {
         const fixture = [
-            ['---', "$schema: '../schemas/frontmatter.schema.json'", "title: 'Kalm Language Specification'",
+            ['---', "$schema: '../validation/frontmatter.schema.json'", "title: 'Kalm Language Specification'",
                 "version: '1.1.0'", "status: 'draft'", "date: '2026-10-11'", "lastmod: '2026-10-11'", "javaversion: '25'", '---'].join('\n'),
             '[main]: #intro', '## Intro',
             Array.from({length: 43}, (_, i) => `Explicit paragraph line ${i + 1}.  `).join('\n'),
@@ -54,7 +56,7 @@ test('pagination protects section starts and safely splits long blocks', async (
         const source = path.join(temp, 'fixture.md');
         const output = path.join(temp, 'fixture.pdf');
         await writeFile(source, fixture);
-        const result = await buildPdf(source, output, 'light');
+        const result = await buildPdf(source, output, testTheme);
         validateLayout(result);
         assert.ok(result.records.filter((record) => record.kind === 'table-header').length > 3);
         assert.ok(result.records.some((record) => record.kind === 'table-row' && record.continuation));
@@ -80,7 +82,7 @@ test('bounded reflow removes a sparse final page without discarding text', async
         await writeFile(source, [frontMatter, '[main]: #intro', '## Intro',
             Array.from({length: 42}, (_, i) => `Explicit paragraph line ${i + 1}.  `).join('\n'),
             '## References', '- Reference one\n- Reference two\n- Reference three'].join('\n\n'));
-        const result = await buildPdf(source, path.join(temp, 'reflow.pdf'), 'light');
+        const result = await buildPdf(source, path.join(temp, 'reflow.pdf'), testTheme);
         assert.equal(result.compact, true);
         assert.equal(result.pageCount, 3);
         assert.equal(result.records.filter((block) => block.kind === 'paragraph').reduce((sum, block) => sum + block.lines, 0), 42);
@@ -90,14 +92,18 @@ test('bounded reflow removes a sparse final page without discarding text', async
     }
 });
 
-test('every specification keeps headings with content and avoids paragraph widows', async () => {
+test('every specification and changes document keeps headings with content and avoids paragraph widows', async () => {
     await mkdir(path.join(root, 'tmp'), {recursive: true});
     const temp = await mkdtemp(path.join(root, 'tmp', 'pdf-corpus-'));
     try {
-        const sources = (await readdir(path.join(root, 'documents'))).filter((name) => name.endsWith('.md'));
-        for (const name of sources) {
-            const result = await buildPdf(path.join(root, 'documents', name), path.join(temp, `${name}.pdf`), 'light');
-            validateLayout(result);
+        for (const entry of await loadEditions()) {
+            for (const record of [entry, ...(entry.changes ? [entry.changes] : [])]) {
+                const changes = record === entry.changes;
+                const output = path.join(temp, `${path.parse(record.file).name}${changes ? '-changes' : ''}.pdf`);
+                const result = await buildPdf(path.join(root, record.file), output, testTheme,
+                    {metadata: record.metadata, changes});
+                validateLayout(result);
+            }
         }
     } finally {
         await rm(temp, {recursive: true, force: true});

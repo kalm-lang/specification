@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import {mkdir, readdir, readFile, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import frontMatter from '../frontmatter.cjs';
+import frontMatter from '../validation/frontmatter.cjs';
+import {identityFor, loadEditions, parseBuildOptions, pdfName, selectEditions} from './editions.mjs';
 import {chooseCodeCount, chooseLineCount, tableColumnWidths, wrapCode} from './pdf-layout.mjs';
 import {codeRuns, highlightCodeBlocks} from './code-highlighting.mjs';
 import {
@@ -23,10 +24,9 @@ import {
 
 const require = createRequire(import.meta.url);
 const {marked} = require('marked');
-const {PDFDocument, PDFName} = require('pdf-lib');
+const {PDFDocument, PDFName, PDFString} = require('pdf-lib');
 const {parseFrontMatter} = frontMatter;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const themes = ['light', 'dark', 'print'];
 const CONTENT_BOTTOM = BOTTOM + 15;
 const BODY_SIZE = 9.5;
 const BODY_LEADING = 14;
@@ -36,33 +36,6 @@ const CODE_SIZE = 8.5;
 const CODE_LEADING = 11.5;
 const CODE_LABEL_HEIGHT = 19;
 const CODE_PADDING = 10;
-
-function parseArguments(args) {
-    const options = {outputDir: path.join(root, 'generated', 'pdf'), theme: 'all', all: false};
-    for (let index = 0; index < args.length; index += 1) {
-        if (args[index] === '--output-dir') options.outputDir = path.resolve(args[++index] ?? '');
-        else if (args[index] === '--theme') options.theme = args[++index] ?? '';
-        else if (args[index] === '--version') {
-            options.version = args[++index] ?? '';
-            if (!options.version || options.version.startsWith('--')) throw new Error('--version requires an X.Y.Z value, optionally followed by -status');
-        } else if (args[index] === '--all') options.all = true;
-        else throw new Error(`Unknown option: ${args[index]}`);
-    }
-    if (options.all && options.version) throw new Error('Use either --all or --version, not both');
-    if (options.version && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?!final$)[a-z][a-z0-9-]*)?$/.test(options.version)) {
-        throw new Error(`Unsupported specification version ${options.version}; use X.Y.Z with an optional -status suffix`);
-    }
-    if (options.theme !== 'all' && !themes.includes(options.theme)) {
-        throw new Error(`Unsupported theme ${options.theme}; choose all, light, dark, or print`);
-    }
-    return options;
-}
-
-function compareVersions(left, right) {
-    const [leftMajor, leftMinor, leftPatch] = left.split('.').map(Number);
-    const [rightMajor, rightMinor, rightPatch] = right.split('.').map(Number);
-    return leftMajor - rightMajor || leftMinor - rightMinor || leftPatch - rightPatch;
-}
 
 function headingSlug(line) {
     const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
@@ -233,6 +206,14 @@ function createFlow(document, metadata, theme, fonts, {initialPageNumber = 0, pa
                 thickness: 0.4,
                 color: runColor
             });
+            if (run.link && /^(https?:|mailto:)/i.test(run.link)) {
+                const annotation = document.context.obj({
+                    Type: 'Annot', Subtype: 'Link',
+                    Rect: [cursorX, baseline - 2, cursorX + width, baseline + size],
+                    Border: [0, 0, 0], A: {S: 'URI', URI: PDFString.of(run.link)},
+                });
+                page.node.addAnnot(document.context.register(annotation));
+            }
             if (run.strike) page.drawLine({
                 start: {x: cursorX, y: baseline + size * 0.32},
                 end: {x: cursorX + width, y: baseline + size * 0.32},
@@ -837,9 +818,9 @@ function renderTokens(flow, tokens) {
 
 async function renderDocument(tokens, metadata, themeName, compact = false) {
     const document = await PDFDocument.create();
-    document.setTitle(`${metadata.title} ${metadata.version} ${metadata.status}`);
+    document.setTitle(metadata.title);
     document.setAuthor('Kalm language project');
-    document.setSubject(`Kalm ${metadata.version} language specification (${metadata.status})`);
+    document.setSubject(`${metadata.title} ${metadata.version} (${metadata.status})`);
     const fonts = await embeddedFonts(document);
     const theme = colors(themeName);
     drawCover(document, metadata, theme, fonts);
@@ -858,10 +839,16 @@ async function renderDocument(tokens, metadata, themeName, compact = false) {
     };
 }
 
-export async function buildPdf(source, outputPath, themeName) {
+export async function buildPdf(source, outputPath, themeName, options = {}) {
     const markdown = await readFile(source, 'utf8');
-    const metadata = parseFrontMatter(markdown, path.relative(root, source));
-    const tokens = marked.lexer(splitAtMain(markdown, source), {gfm: true});
+    const metadata = options.metadata ?? parseFrontMatter(markdown, path.relative(root, source));
+    const content = options.changes ? markdown : splitAtMain(markdown, source);
+    const tokens = marked.lexer(content, {gfm: true});
+    if (options.sourceUrl) {
+        marked.walkTokens(tokens, token => {
+            if (token.type === 'link') token.href = new URL(token.href, options.sourceUrl).href;
+        });
+    }
     await highlightCodeBlocks(tokens, normalizeText, themeName);
     let result = await renderDocument(tokens, metadata, themeName);
     const last = result.records.at(-1);
@@ -875,35 +862,33 @@ export async function buildPdf(source, outputPath, themeName) {
     return report;
 }
 
-async function main() {
-    const options = parseArguments(process.argv.slice(2));
-    const documentsDir = path.join(root, 'documents');
-    const sources = (await readdir(documentsDir)).filter((name) => name.endsWith('.md')).sort()
-        .map((name) => path.join(documentsDir, name));
-    if (!sources.length) throw new Error(`No Markdown documents found in ${documentsDir}`);
-    const documents = await Promise.all(sources.map(async (source) => {
-        const markdown = await readFile(source, 'utf8');
-        return {source, metadata: parseFrontMatter(markdown, path.relative(root, source))};
-    }));
-    const latestFinalVersion = documents.filter(({metadata}) => metadata.status === 'final')
-        .map(({metadata}) => metadata.version).sort(compareVersions).at(-1);
-    if (!options.all && !latestFinalVersion) throw new Error('No final specification version found');
-    const [targetVersion, targetStatus] = options.version?.split(/-(.*)/s) ?? [];
-    const selectedVersion = targetVersion ?? latestFinalVersion;
-    const selected = options.all ? documents : documents.filter(({metadata}) => (
-        metadata.version === selectedVersion && (!options.version || metadata.status === (targetStatus ?? 'final'))
-    ));
-    if (!selected.length) throw new Error(`No specification documents found for version ${selectedVersion}${targetStatus ? `-${targetStatus}` : ''}`);
-    await mkdir(options.outputDir, {recursive: true});
-    const selectedThemes = options.theme === 'all' ? themes : [options.theme];
-    for (const {source} of selected) {
-        for (const themeName of selectedThemes) {
-            const outputPath = path.join(options.outputDir, `${path.parse(source).name}-${themeName}.pdf`);
-            await buildPdf(source, outputPath, themeName);
-            console.log(`Generated ${path.relative(root, outputPath)}`);
+export async function buildPdfs(options, directory = root) {
+    const selected = selectEditions(await loadEditions(directory), options);
+    const packageJson = JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8'));
+    const repositoryUrl = (packageJson.repository?.url ?? packageJson.repository)
+        .replace(/^git\+/, '').replace(/\.git$/, '').replace(/\/$/, '');
+    const outputDir = options.outputDir ?? path.join(directory, 'generated', 'pdf');
+    await mkdir(outputDir, {recursive: true});
+    const outputs = [];
+    for (const entry of selected) {
+        for (const themeName of options.themes) {
+            for (const record of [entry, ...(entry.changes ? [entry.changes] : [])]) {
+                const changes = record === entry.changes;
+                const outputPath = path.join(outputDir, pdfName(entry, themeName, changes));
+                const sourceUrl = `${repositoryUrl}/blob/v${identityFor(entry.metadata)}/${record.file}`;
+                await buildPdf(path.join(directory, record.file), outputPath, themeName,
+                    {metadata: record.metadata, changes, sourceUrl});
+                outputs.push(outputPath);
+                console.log(`Generated ${path.relative(directory, outputPath)}`);
+            }
         }
     }
-    console.log(`Generated ${selected.length * selectedThemes.length} PDFs for ${options.all ? 'all specification versions' : `version ${selectedVersion}`} in ${options.outputDir}`);
+    console.log(`Generated ${outputs.length} PDFs in ${outputDir}`);
+    return outputs;
+}
+
+async function main() {
+    await buildPdfs(parseBuildOptions(process.argv.slice(2)));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

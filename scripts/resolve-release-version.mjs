@@ -1,7 +1,7 @@
 import {readdir, readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import frontMatter from '../frontmatter.cjs';
+import frontMatter from '../validation/frontmatter.cjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {parseFrontMatter} = frontMatter;
@@ -44,7 +44,7 @@ if (eventName === 'push') {
     if (!tag) failSelection(`Tag ${tagName || '(empty)'} must use vX.Y.Z with an optional -status suffix`);
     version = tag[1];
     status = tag[2] ?? 'final';
-    if (status === 'final') failSelection('Final releases omit the -final tag suffix');
+    if (tag[2] === 'final') failSelection('Final releases omit the -final tag suffix');
 } else {
     const noManualInput = !explicitVersion && !inputStatus;
     version = noManualInput ? finalVersions.at(-1) : explicitVersion || finalVersions.at(-1);

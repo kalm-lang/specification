@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           if [[ -z "$KALM_PACKAGES_READ_TOKEN" ]]; then
-            echo '::error::Set KALM_PACKAGES_READ_TOKEN and publish the shared highlighting package first.'
+            echo '::error::Set KALM_PACKAGES_READ_TOKEN with access to the published Kalm dependencies.'
             exit 1
           fi
       - name: Check out full history
@@ -50,9 +50,10 @@ jobs:
           node-version: 22
           registry-url: https://npm.pkg.github.com
           scope: '@kalm-lang'
+          cache: npm
 
       - name: Install Node.js build dependencies
-        run: npm install --include=dev --ignore-scripts --no-audit --no-fund --no-package-lock --fetch-retries=0
+        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund --fetch-retries=0
 
       - name: Resolve and validate release version
         id: release
@@ -61,7 +62,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_STATUS: ${{ inputs.status }}
           TAG_NAME: ${{ github.ref_name }}
-        run: node scripts/resolve-release-version.mjs >> "$GITHUB_OUTPUT"
+        run: npm run --silent release:resolve >> "$GITHUB_OUTPUT"
 
       - name: Reject an existing release or tag
         env:
@@ -115,18 +116,20 @@ jobs:
             fi
           done
 
-      - name: Check PDF layout and pagination
-        run: npm run test:pdfs
+      - name: Check package tooling and PDF layout
+        run: npm test
+        env:
+          PDF_TEST_THEME: dark
 
       - name: Generate release-version PDFs
         env:
           PDF_VERSION: ${{ steps.release.outputs.pdf_version }}
-        run: npm run build:pdfs -- --version "$PDF_VERSION"
+        run: npm run build -- --version "$PDF_VERSION" --theme dark --theme print
 
       - name: Prepare focused and historical packages
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: node scripts/build-packages.mjs
+        run: npm run build:packages -- --theme dark --theme print
 
       - name: Publish focused specification package
         env:
@@ -154,94 +157,6 @@ jobs:
 
       - name: Create GitHub release
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          SPECIFICATION_VERSION: ${{ steps.release.outputs.specification_version }}
-          SPECIFICATION_STATUS: ${{ steps.release.outputs.status }}
-        run: |
-          mapfile -t SPEC_FILES < <(find generated/release-packages/versioned/documents -maxdepth 1 -type f -name '*.md' -print)
-          if [ "${#SPEC_FILES[@]}" -ne 1 ]; then
-            echo "Expected exactly one version-matched specification Markdown file; found ${#SPEC_FILES[@]}" >&2
-            exit 1
-          fi
-          mapfile -t PDF_FILES < <(find generated/release-packages/versioned/generated/pdf -maxdepth 1 -type f -name '*.pdf' -print)
-          if [ "${#PDF_FILES[@]}" -ne 3 ]; then
-            echo "Expected one light, dark, and print specification PDF; found ${#PDF_FILES[@]}" >&2
-            exit 1
-          fi
-
-          SPEC_FILE="${SPEC_FILES[0]}"
-          mapfile -t METADATA < <(node - "$SPEC_FILE" <<'NODE'
-          const fs = require('node:fs');
-          const { parseFrontMatter } = require('./frontmatter.cjs');
-          const file = process.argv[2];
-          const metadata = parseFrontMatter(fs.readFileSync(file, 'utf8'), file);
-          for (const key of ['title', 'version', 'status']) {
-            const value = metadata[key];
-            if (value === undefined || value === null || /[\r\n]/.test(String(value))) {
-              throw new Error(`Missing or invalid release metadata: ${key}`);
-            }
-            console.log(String(value));
-          }
-          NODE
-          )
-          if [ "${#METADATA[@]}" -ne 3 ]; then
-            echo "Could not read all required specification metadata" >&2
-            exit 1
-          fi
-          SPECIFICATION_TITLE="${METADATA[0]}"
-          SPECIFICATION_VERSION="${METADATA[1]}"
-          SPECIFICATION_STATUS="${METADATA[2]}"
-          SPEC_FILENAME="${SPEC_FILE##*/}"
-          SPEC_BASENAME="${SPEC_FILENAME%.md}"
-          DISPLAY_TITLE="${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION} ${SPECIFICATION_STATUS^}"
-          PDF_ASSETS=()
-          PDF_LINKS=()
-          RELEASE_FLAGS=()
-          SPECIFICATION_SUFFIX=""
-          if [ "$SPECIFICATION_STATUS" != "final" ]; then
-            RELEASE_FLAGS+=(--prerelease)
-            SPECIFICATION_SUFFIX="-$SPECIFICATION_STATUS"
-          fi
-          for theme in light dark print; do
-            PDF_FILE="generated/release-packages/versioned/generated/pdf/${SPEC_BASENAME}-${theme}.pdf"
-            if [ ! -f "$PDF_FILE" ]; then
-              echo "Missing ${theme} specification PDF: $PDF_FILE" >&2
-              exit 1
-            fi
-            THEME_LABEL="${theme^}"
-            PDF_ASSETS+=("$PDF_FILE#${DISPLAY_TITLE} (${THEME_LABEL})")
-            PDF_LINKS+=("- [${THEME_LABEL} PDF](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${SPEC_BASENAME}-${theme}.pdf)")
-          done
-          DOCUMENT_ASSET_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${SPEC_FILENAME}"
-          DOCUMENT_SOURCE_LINK="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/documents/${SPEC_FILENAME}"
-          NOTES=$(cat <<'EOF'
-          ## Published documents
-
-          - [Markdown specification](DOCUMENT_ASSET_LINK)
-          - [Markdown specification (direct)](DOCUMENT_SOURCE_LINK)
-          LIGHT_PDF_LINK
-          DARK_PDF_LINK
-          PRINT_PDF_LINK
-
-          ## Published packages
-
-          - Focused: `@kalm-lang/specification@RELEASE_VERSION`
-          - Historical bundle: `@kalm-lang/specification@RELEASE_VERSION-full`
-          EOF
-          )
-          NOTES="${NOTES//DOCUMENT_ASSET_LINK/$DOCUMENT_ASSET_LINK}"
-          NOTES="${NOTES//DOCUMENT_SOURCE_LINK/$DOCUMENT_SOURCE_LINK}"
-          NOTES="${NOTES//LIGHT_PDF_LINK/${PDF_LINKS[0]}}"
-          NOTES="${NOTES//DARK_PDF_LINK/${PDF_LINKS[1]}}"
-          NOTES="${NOTES//PRINT_PDF_LINK/${PDF_LINKS[2]}}"
-          NOTES="${NOTES//RELEASE_VERSION/$RELEASE_VERSION}"
-
-          gh release create "$RELEASE_TAG" \
-            "$SPEC_FILE#${DISPLAY_TITLE} (Markdown)" \
-            "${PDF_ASSETS[@]}" \
-            --verify-tag \
-            --title "${SPECIFICATION_TITLE} ${SPECIFICATION_VERSION}${SPECIFICATION_SUFFIX}" \
-            --notes "$NOTES" \
-            "${RELEASE_FLAGS[@]}"
+        run: npm run release:github -- --theme dark --theme print
