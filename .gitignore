@@ -3,3 +3,4 @@ generated/release-packages/
 node_modules/
 tmp/
 *.tgz
+/generated/
