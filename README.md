@@ -46,9 +46,11 @@ historical language rules remain unchanged.
 
 ## Install and check
 
-Configure a GitHub Packages token with read access to the Kalm packages as `KALM_PACKAGES_READ_TOKEN`.
-The checked-in `.npmrc` selects GitHub Packages for `@kalm-lang` and the lockfile records registry tarballs and integrity
-hashes. No sibling checkout or local tarball is required.
+GitHub Actions uses its built-in `GITHUB_TOKEN` to install the Kalm packages; no repository secret is needed. If the
+dependency package is private, grant this repository Actions read access in that package's **Manage Actions access**
+settings. For local installs, configure a GitHub Packages token with package read access as `KALM_PACKAGES_READ_TOKEN`.
+The checked-in `.npmrc` selects GitHub Packages for `@kalm-lang` and the lockfile records registry tarballs and
+integrity hashes. No sibling checkout or local tarball is required.
 
 ```sh
 npm ci
@@ -161,4 +163,4 @@ with npm's `--silent` option when writing GitHub outputs. `release:github` valid
 assets, stages a uniquely named `v<edition>-changes.md` when present, writes release notes to a file, and invokes
 `gh release create`. It does not rebuild packages or publish npm packages.
 
-The workflow's `KALM_PACKAGES_READ_TOKEN` installs dependencies; its repository token publishes packages and the release.
+The workflow uses its built-in repository token to install and publish packages and create the release.

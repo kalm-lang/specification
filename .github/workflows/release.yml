@@ -30,15 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      KALM_PACKAGES_READ_TOKEN: ${{ secrets.KALM_PACKAGES_READ_TOKEN }}
+      KALM_PACKAGES_READ_TOKEN: ${{ github.token }}
     steps:
-      - name: Require package-read credentials
-        shell: bash
-        run: |
-          if [[ -z "$KALM_PACKAGES_READ_TOKEN" ]]; then
-            echo '::error::Set KALM_PACKAGES_READ_TOKEN with access to the published Kalm dependencies.'
-            exit 1
-          fi
       - name: Check out full history
         uses: actions/checkout@v4
         with:
