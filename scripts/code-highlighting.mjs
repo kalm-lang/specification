@@ -1,8 +1,8 @@
 import {createKalmHighlighter, resolveLanguage, themes} from '@kalm-lang/syntax-highlighting';
 
 // Tokenize a complete block before layout, so comments/strings retain cross-line state.
-export async function highlightCodeBlocks(tokens, normalize, themeName) {
-    const highlighter = await createKalmHighlighter();
+export async function highlightCodeBlocks(tokens, normalize, themeName, edition = '1.2') {
+    const highlighter = await createKalmHighlighter({edition});
     try {
         function visit(list) {
             for (const token of list ?? []) {

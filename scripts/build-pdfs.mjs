@@ -849,7 +849,7 @@ export async function buildPdf(source, outputPath, themeName, options = {}) {
             if (token.type === 'link') token.href = new URL(token.href, options.sourceUrl).href;
         });
     }
-    await highlightCodeBlocks(tokens, normalizeText, themeName);
+    await highlightCodeBlocks(tokens, normalizeText, themeName, metadata.version.startsWith('1.2.') ? '1.2' : 'legacy');
     let result = await renderDocument(tokens, metadata, themeName);
     const last = result.records.at(-1);
     // A bounded retry can remove a nearly empty final page without shrinking type.

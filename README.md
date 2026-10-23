@@ -49,8 +49,9 @@ historical language rules remain unchanged.
 GitHub Actions uses its built-in `GITHUB_TOKEN` to install the Kalm packages; no repository secret is needed. If the
 dependency package is private, grant this repository Actions read access in that package's **Manage Actions access**
 settings. For local installs, configure a GitHub Packages token with package read access as `KALM_PACKAGES_READ_TOKEN`.
-The checked-in `.npmrc` selects GitHub Packages for `@kalm-lang` and the lockfile records registry tarballs and
-integrity hashes. No sibling checkout or local tarball is required.
+The checked-in `.npmrc` selects GitHub Packages for `@kalm-lang` and the lockfile records dependency versions and
+integrity hashes. The 1.2.0 highlighter entry pins the locally verified release tarball integrity and lets npm resolve its
+endpoint through the configured registry after publication. No sibling checkout or local tarball is required.
 
 ```sh
 npm ci
@@ -58,8 +59,8 @@ npm test
 ```
 
 Use `npm install` when intentionally updating dependencies and commit the resulting `package-lock.json`.
-The highlighter is pinned to published `@kalm-lang/syntax-highlighting@1.1.0`; the formerly pinned `0.1.0` is not
-published. `npm ci` verifies reproducible installs locally and in GitHub Actions.
+The highlighter is pinned to `@kalm-lang/syntax-highlighting@1.2.0`. Before registry publication, use the
+[local workspace](https://github.com/kalm-lang/tools/blob/main/docs/workspace.md) to stage its verified tarball. `npm ci` verifies reproducible installs locally and in GitHub Actions.
 
 ## Use the published package
 
@@ -71,9 +72,9 @@ Consumers configure package access, then install a focused edition or historical
 ```
 
 ```sh
-npm install @kalm-lang/specification@1.1.0
+npm install @kalm-lang/specification@1.2.0
 npm install @kalm-lang/specification@1.2.0-draft
-npm install @kalm-lang/specification@1.1.0-full
+npm install @kalm-lang/specification@1.2.0-full
 ```
 
 The package root exports static records. Final editions are in `versions`, other statuses in `drafts`, and existing
@@ -82,18 +83,18 @@ companions in `changes`, keyed by target edition identity. A missing companion h
 ```js
 import {changes, drafts, latestVersion, versions} from '@kalm-lang/specification';
 
-const finalMarkdown = versions['1.1.0']?.markdown;
+const finalMarkdown = versions['1.2.0']?.markdown;
 const draftMarkdown = drafts['1.2.0-draft']?.markdown;
-const migrationMarkdown = changes['1.2.0-draft']?.markdown;
+const migrationMarkdown = changes['1.2.0']?.markdown;
 console.log(latestVersion, finalMarkdown, draftMarkdown, migrationMarkdown);
 ```
 
 Edition and companion subpaths export a Markdown string plus `metadata`:
 
 ```js
-import specification, {metadata} from '@kalm-lang/specification/versions/1.1.0';
+import specification, {metadata} from '@kalm-lang/specification/versions/1.2.0';
 import draft from '@kalm-lang/specification/drafts/1.2.0-draft';
-import migration from '@kalm-lang/specification/changes/1.2.0-draft';
+import migration from '@kalm-lang/specification/changes/1.2.0';
 ```
 
 Only included editions/companions have importable subpaths. Raw Markdown is shipped under `documents/` and `changes/`;
